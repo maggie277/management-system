@@ -63,7 +63,7 @@ Route::prefix('staff')->group(function () {
 
     // Staff logout & dashboard (authenticated)
     Route::middleware('auth:staff')->group(function () {
-        Route::post('/logout', [StaffLoginController::class, 'logout'])->name('staff.logout');
+Route::post('/logout', [StaffLoginController::class, 'logout'])->name('staff.logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('staff.dashboard');
     });
 });

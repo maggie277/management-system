@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Staff Dashboard - CTPD</title>
-
-    <!-- Tailwind CSS via Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <!-- Or use CDN fallback -->
-    <!-- <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> -->
 </head>
 <body class="font-sans antialiased bg-white">
 
@@ -20,6 +16,8 @@
         </div>
         <div class="flex items-center space-x-4">
             <span>{{ $staff->name }}</span>
+
+            <!-- Logout Form (POST only) -->
             <form method="POST" action="{{ route('staff.logout') }}">
                 @csrf
                 <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">
@@ -34,20 +32,16 @@
         <!-- Sidebar -->
         <aside class="w-64 bg-green-50 shadow-md p-4">
             <nav class="space-y-2">
-                <a href="{{ route('staff.dashboard') }}"
-                   class="block px-4 py-2 bg-green-200 text-green-900 rounded hover:bg-green-300">
+                <a href="{{ route('staff.dashboard') }}" class="block px-4 py-2 bg-green-200 text-green-900 rounded hover:bg-green-300">
                     Dashboard
                 </a>
-                <a href="#"
-                   class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
+                <a href="#" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
                     Tasks
                 </a>
-                <a href="#"
-                   class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
+                <a href="#" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
                     Deadlines
                 </a>
-                <a href="#"
-                   class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
+                <a href="#" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
                     Pending Items
                 </a>
             </nav>
