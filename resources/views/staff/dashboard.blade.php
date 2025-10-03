@@ -12,7 +12,7 @@
     <!-- Top Navbar -->
     <nav class="bg-green-700 shadow-md px-6 py-4 flex justify-between items-center text-white">
         <div>
-            <a href="{{ route('staff.dashboard') }}" class="text-xl font-bold">CTPD - Staff</a>
+            <a href="{{ route('staff.dashboard') }}" class="text-xl font-bold">CTPD - Staff Portal</a>
         </div>
         <div class="flex items-center space-x-4">
             <span>{{ $staff->name }}</span>
@@ -35,13 +35,13 @@
                 <a href="{{ route('staff.dashboard') }}" class="block px-4 py-2 bg-green-200 text-green-900 rounded hover:bg-green-300">
                     Dashboard
                 </a>
-                <a href="#" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
+                <a href="{{ route('staff.tasks.index') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
                     Tasks
                 </a>
-                <a href="#" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
+                <a href="{{ route('staff.tasks.deadlines') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
                     Deadlines
                 </a>
-                <a href="#" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
+                <a href="{{ route('staff.tasks.pending') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
                     Pending Items
                 </a>
             </nav>
@@ -54,20 +54,54 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <!-- Assigned Tasks -->
                 <div class="bg-white p-4 rounded shadow">
                     <h2 class="font-semibold mb-2">Assigned Tasks</h2>
-                    <p>(Tasks placeholder)</p>
+                    @if($assignedTasks->isEmpty())
+                        <p>No tasks assigned.</p>
+                    @else
+                        <ul class="list-disc list-inside">
+                            @foreach($assignedTasks as $task)
+                                <li>
+                                    {{ $task->title }}
+                                    @if($task->status) <span class="text-sm text-gray-500">({{ $task->status }})</span> @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
 
+                <!-- Upcoming Deadlines -->
                 <div class="bg-white p-4 rounded shadow">
                     <h2 class="font-semibold mb-2">Upcoming Deadlines</h2>
-                    <p>(Deadlines placeholder)</p>
+                    @if($upcomingDeadlines->isEmpty())
+                        <p>No upcoming deadlines.</p>
+                    @else
+                        <ul class="list-disc list-inside">
+                            @foreach($upcomingDeadlines as $task)
+                                <li>
+                                    {{ $task->title }} – due {{ $task->due_date->format('M d, Y') }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
 
+                <!-- Pending Items -->
                 <div class="bg-white p-4 rounded shadow">
                     <h2 class="font-semibold mb-2">Pending Items</h2>
-                    <p>(Pending items placeholder)</p>
+                    @if($pendingItems->isEmpty())
+                        <p>No pending items.</p>
+                    @else
+                        <ul class="list-disc list-inside">
+                            @foreach($pendingItems as $task)
+                                <li>{{ $task->title }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
+
             </div>
         </main>
 

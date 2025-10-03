@@ -1,14 +1,11 @@
+<!-- resources/views/components/staff-layout.blade.php -->
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <title>CTPD - Staff Portal</title>
-
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased bg-white">
@@ -28,8 +25,6 @@
     <aside class="w-64 bg-green-50 shadow-md p-4">
         <nav class="space-y-2">
             <a href="{{ route('staff.dashboard') }}" class="block px-4 py-2 bg-green-200 text-green-900 rounded hover:bg-green-300">Dashboard</a>
-            <a href="{{ route('staff.documents.index') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Documents</a>
-            <a href="{{ route('staff.assets.index') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Assets</a>
             <a href="{{ route('staff.tasks.index') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">Tasks</a>
         </nav>
     </aside>

@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Staff\StaffLoginController;
 use App\Http\Controllers\Staff\DashboardController;
+use App\Http\Controllers\Staff\TaskController;
 
 // ---------------- ADMIN ROUTES ----------------
 
@@ -65,8 +66,16 @@ Route::prefix('staff')->group(function () {
     Route::middleware('auth:staff')->group(function () {
 Route::post('/logout', [StaffLoginController::class, 'logout'])->name('staff.logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('staff.dashboard');
-    });
+         Route::get('/tasks', [TaskController::class, 'index'])->name('staff.tasks.index');
+        Route::get('/tasks/create', [TaskController::class, 'create'])->name('staff.tasks.create');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('staff.tasks.store');
+         Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('staff.tasks.edit');
+    Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('staff.tasks.update');
+    Route::get('/tasks/deadlines', [TaskController::class, 'deadlines'])->name('staff.tasks.deadlines');
+     Route::get('/tasks/pending', [TaskController::class, 'pending'])->name('staff.tasks.pending');
+
 });
 
-// Include password reset / verification / other auth routes
+});
+
 require __DIR__.'/auth.php';
