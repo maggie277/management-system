@@ -3,45 +3,71 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
+     * Show the admin login form
      */
-    public function create(): View
+    public function create()
     {
-        return view('auth.login');
+        return view('auth.login'); // admin login blade
     }
 
     /**
-     * Handle an incoming authentication request.
+     * Handle admin login
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(Request $request)
     {
-        $request->authenticate();
+        // Validate input
+        $credentials = $request->validate([
+            'email'    => ['required', 'email'],
+            'password' => ['required'],
+        ]);
 
-        $request->session()->regenerate();
+        // Try to log in with web guard
+        if (Auth::guard('web')->attempt($credentials, $request->filled('remember'))) {
+            $user = Auth::guard('web')->user();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+            // Check if role column exists and matches "admin"
+            if (property_exists($user, 'role')) {
+                if (strtolower($user->role) !== 'admin') {
+                    Auth::guard('web')->logout();
+                    return back()->withErrors([
+                        'email' => "This account is not an admin. Role found: {$user->role}",
+                    ]);
+                }
+            } else {
+                // If no role column, block login for safety
+                Auth::guard('web')->logout();
+                return back()->withErrors([
+                    'email' => 'This account does not have a role defined.',
+                ]);
+            }
+
+            // Passed all checks → regenerate session
+            $request->session()->regenerate();
+            return redirect()->intended('/dashboard');
+        }
+
+        // Invalid login
+        return back()->withErrors([
+            'email' => 'Invalid credentials.',
+        ]);
     }
 
     /**
-     * Destroy an authenticated session.
+     * Logout admin
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request)
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 }

@@ -1,50 +1,62 @@
 @extends('layouts.auth')
 
 @section('content')
-<h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 text-center mb-6">Document & Asset Management System</h1>
-<p class="text-gray-600 dark:text-gray-400 text-center mb-6">Secure access for staff and admins only</p>
+<div class="w-full max-w-sm bg-white p-6 rounded shadow mx-auto">
+    <h1 class="text-2xl font-bold text-green-900 text-center mb-4">
+        Admin Management System
+    </h1>
+    <p class="text-green-700 text-center mb-6">
+        Secure admins only
+    </p>
 
-<x-auth-session-status class="mb-4" :status="session('status')" />
+    <x-auth-session-status class="mb-4" :status="session('status')" />
 
-<form method="POST" action="{{ route('login') }}">
-    @csrf
+    <form method="POST" action="{{ route('login') }}">
+        @csrf
 
-    <!-- Email -->
-    <div class="mb-4">
-        <x-input-label for="email" :value="__('Email')" />
-        <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-        <x-input-error :messages="$errors->get('email')" class="mt-2" />
-    </div>
+        <!-- Email -->
+        <div class="mb-4">
+            <x-input-label for="email" :value="__('Email')" class="text-green-800 font-medium" />
+            <x-text-input id="email" class="block mt-1 w-full border p-2 rounded"
+                type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+            <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600" />
+        </div>
 
-    <!-- Password -->
-    <div class="mb-4">
-        <x-input-label for="password" :value="__('Password')" />
-        <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
-        <x-input-error :messages="$errors->get('password')" class="mt-2" />
-    </div>
+        <!-- Password -->
+        <div class="mb-4">
+            <x-input-label for="password" :value="__('Password')" class="text-green-800 font-medium" />
+            <x-text-input id="password" class="block mt-1 w-full border p-2 rounded"
+                type="password" name="password" required autocomplete="current-password" />
+            <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600" />
+        </div>
 
-    <!-- Remember Me -->
-    <div class="block mb-4">
-        <label for="remember_me" class="inline-flex items-center">
-            <input id="remember_me" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
-            <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
-        </label>
-    </div>
+        <!-- Remember Me -->
+        <div class="block mb-4">
+            <label for="remember_me" class="inline-flex items-center">
+                <input id="remember_me" type="checkbox"
+                    class="rounded border-gray-300 text-green-700 shadow-sm focus:ring-green-500"
+                    name="remember">
+                <span class="ms-2 text-sm text-green-700">{{ __('Remember me') }}</span>
+            </label>
+        </div>
 
-    <!-- Submit Button -->
-    <div class="flex items-center justify-end mt-4">
-        <x-primary-button class="ms-3 bg-indigo-600 hover:bg-indigo-700">
-            {{ __('Log in') }}
-        </x-primary-button>
-    </div>
+        <!-- Submit Button -->
+        <div class="flex items-center justify-center mt-4">
+            <button type="submit"
+                class="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition">
+                {{ __('Log in') }}
+            </button>
+        </div>
 
-    <!-- Forgot Password -->
-    @if (Route::has('password.request'))
-        <p class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-            <a href="{{ route('password.request') }}" class="underline hover:text-gray-900 dark:hover:text-gray-100">
-                {{ __('Forgot your password?') }}
-            </a>
-        </p>
-    @endif
-</form>
+        <!-- Forgot Password -->
+        @if (Route::has('password.request'))
+            <p class="mt-4 text-center text-sm text-green-700">
+                <a href="{{ route('password.request') }}"
+                   class="underline hover:text-green-900">
+                    {{ __('Forgot your password?') }}
+                </a>
+            </p>
+        @endif
+    </form>
+</div>
 @endsection

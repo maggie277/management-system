@@ -10,7 +10,7 @@ class StaffLoginController extends Controller
 {
     public function showLoginForm()
     {
-        return view('staff.login');
+        return view('staff.login'); // blade for staff login
     }
 
     public function login(Request $request)
@@ -20,12 +20,9 @@ class StaffLoginController extends Controller
             'password' => 'required',
         ]);
 
-        // Use staff session cookie
-        config(['session.cookie' => config('session.staff_cookie')]);
-
         if (Auth::guard('staff')->attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->route('staff.dashboard');
+            return redirect()->route('staff.dashboard'); // go to staff dashboard
         }
 
         return back()->withErrors(['email' => 'Invalid credentials.']);
@@ -33,7 +30,6 @@ class StaffLoginController extends Controller
 
     public function logout(Request $request)
     {
-        config(['session.cookie' => config('session.staff_cookie')]);
         Auth::guard('staff')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

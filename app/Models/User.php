@@ -21,7 +21,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+         'role',
     ];
+    public function setPasswordAttribute($password)
+    {
+        $this->attributes['password'] = \Illuminate\Support\Facades\Hash::make($password);
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -45,4 +50,6 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+
 }
