@@ -9,14 +9,15 @@ class CreateExpensesTable extends Migration
     public function up(): void
     {
         Schema::create('expenses', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('budget_id')->constrained()->onDelete('cascade'); // Link to budget
-            $table->string('title');
-            $table->decimal('amount', 15, 2);
-            $table->text('notes')->nullable();
-            $table->date('expense_date');
-            $table->timestamps();
-        });
+    $table->id();
+    $table->foreignId('budget_id')->constrained()->cascadeOnDelete();
+    $table->string('title');
+    $table->decimal('amount', 15, 2);
+    $table->date('expense_date');
+    $table->text('notes')->nullable();
+    $table->timestamps();
+});
+
     }
 
     public function down(): void

@@ -13,18 +13,14 @@ class Expense extends Model
         'budget_id',
         'title',
         'amount',
-        'notes',
         'expense_date',
+        'notes'
     ];
 
-    // Cast expense_date to a Carbon instance
     protected $casts = [
         'expense_date' => 'datetime',
     ];
 
-    /**
-     * Each expense belongs to a budget.
-     */
     public function budget()
     {
         return $this->belongsTo(Budget::class);

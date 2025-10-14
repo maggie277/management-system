@@ -9,14 +9,15 @@ class CreateBudgetsTable extends Migration
     public function up()
     {
         Schema::create('budgets', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('donor_id')->constrained()->onDelete('cascade'); // Link to donor
-            $table->decimal('amount', 15, 2); // Total budget
-            $table->decimal('threshold', 15, 2)->nullable(); // Alert threshold
-            $table->string('currency', 5)->default('USD');
-            $table->string('description')->nullable();
-            $table->timestamps();
-        });
+    $table->id();
+    $table->foreignId('donor_id')->constrained()->cascadeOnDelete();
+    $table->decimal('amount', 15, 2);
+    $table->decimal('threshold', 15, 2)->nullable();
+    $table->string('currency')->default('USD');
+    $table->string('description')->nullable();
+    $table->timestamps();
+});
+
     }
 
     public function down()

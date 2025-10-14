@@ -8,69 +8,68 @@ use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
-    // Show all expenses
-    public function index()
-    {
-        $expenses = Expense::with('budget.donor')->get();
-        return view('expenses.index', compact('expenses'));
-    }
-
-    // Show form to create new expense
     public function create()
     {
-        $budgets = Budget::all();
+        $budgets = Budget::with('donor')->get();
         return view('expenses.create', compact('budgets'));
     }
 
-    // Save new expense
     public function store(Request $request)
     {
-        $request->validate([
-            'budget_id'    => 'required|exists:budgets,id',
-            'title'        => 'required|string|max:255',
-            'amount'       => 'required|numeric|min:0',
-            'notes'        => 'nullable|string',
+        $validated = $request->validate([
+            'budget_id' => 'required|exists:budgets,id',
+            'title' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
             'expense_date' => 'required|date',
+            'notes' => 'nullable|string',
         ]);
 
-        Expense::create($request->all());
+        $expense = Expense::create($validated);
 
-        return redirect()->route('expenses.index')->with('success', 'Expense created successfully.');
+        // ✅ No need to save 'remaining' column — it's calculated dynamically
+        // But we can still ensure data integrity by reloading relationships
+        $budget = $expense->budget;
+        $budget->load('expenses');
+
+        return redirect()->route('budgets.index')
+            ->with('success', 'Expense added successfully.');
     }
 
-    // Show single expense
-    public function show(Expense $expense)
-    {
-        return view('expenses.show', compact('expense'));
-    }
-
-    // Show form to edit expense
     public function edit(Expense $expense)
     {
-        $budgets = Budget::all();
+        $budgets = Budget::with('donor')->get();
         return view('expenses.edit', compact('expense', 'budgets'));
     }
 
-    // Update expense
     public function update(Request $request, Expense $expense)
     {
-        $request->validate([
-            'budget_id'    => 'required|exists:budgets,id',
-            'title'        => 'required|string|max:255',
-            'amount'       => 'required|numeric|min:0',
-            'notes'        => 'nullable|string',
+        $validated = $request->validate([
+            'budget_id' => 'required|exists:budgets,id',
+            'title' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
             'expense_date' => 'required|date',
+            'notes' => 'nullable|string',
         ]);
 
-        $expense->update($request->all());
+        $expense->update($validated);
 
-        return redirect()->route('expenses.index')->with('success', 'Expense updated successfully.');
+        // ✅ Recalculate totals dynamically (no DB column needed)
+        $budget = $expense->budget;
+        $budget->load('expenses');
+
+        return redirect()->route('budgets.index')
+            ->with('success', 'Expense updated successfully.');
     }
 
-    // Delete expense
     public function destroy(Expense $expense)
     {
+        $budget = $expense->budget; // store reference before delete
         $expense->delete();
-        return redirect()->route('expenses.index')->with('success', 'Expense deleted successfully.');
+
+        // ✅ Reload relationships to reflect updated expenses
+        $budget->load('expenses');
+
+        return redirect()->route('budgets.index')
+            ->with('success', 'Expense deleted successfully.');
     }
 }

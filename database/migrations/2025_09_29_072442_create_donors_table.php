@@ -9,12 +9,13 @@ class CreateDonorsTable extends Migration
     public function up()
     {
         Schema::create('donors', function (Blueprint $table) {
-            $table->id();
-            $table->string('name'); // Donor name
-            $table->string('email')->nullable(); // Optional
-            $table->string('phone')->nullable();
-            $table->timestamps();
-        });
+    $table->id();
+    $table->string('name');
+    $table->string('email')->nullable();
+    $table->string('phone')->nullable();
+    $table->timestamps();
+});
+
     }
 
     public function down()

@@ -1,62 +1,54 @@
-@extends('layouts.auth')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTPD Portal Login</title>
+    @vite('resources/css/app.css')
+</head>
+<body class="bg-green-50 flex items-center justify-center min-h-screen">
 
-@section('content')
-<div class="w-full max-w-sm bg-white p-6 rounded shadow mx-auto">
-    <h1 class="text-2xl font-bold text-green-900 text-center mb-4">
-        Admin Management System
-    </h1>
-    <p class="text-green-700 text-center mb-6">
-        Secure admins only
-    </p>
+<div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border border-green-100">
+    <h2 class="text-2xl font-bold text-green-800 mb-6 text-center">CTPD Portal Login</h2>
 
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+    @if ($errors->any())
+        <div class="bg-red-100 text-red-800 p-3 rounded mb-4">
+            {{ $errors->first() }}
+        </div>
+    @endif
 
-    <form method="POST" action="{{ route('login') }}">
+    <form method="POST" action="{{ route('login') }}" class="space-y-4">
         @csrf
 
-        <!-- Email -->
-        <div class="mb-4">
-            <x-input-label for="email" :value="__('Email')" class="text-green-800 font-medium" />
-            <x-text-input id="email" class="block mt-1 w-full border p-2 rounded"
-                type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600" />
+        <div>
+            <label class="block text-sm font-medium text-green-900 mb-1">Email</label>
+            <input type="email" name="email" required
+                   class="w-full border border-green-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none"
+                   value="{{ old('email') }}">
         </div>
 
-        <!-- Password -->
-        <div class="mb-4">
-            <x-input-label for="password" :value="__('Password')" class="text-green-800 font-medium" />
-            <x-text-input id="password" class="block mt-1 w-full border p-2 rounded"
-                type="password" name="password" required autocomplete="current-password" />
-            <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600" />
+        <div>
+            <label class="block text-sm font-medium text-green-900 mb-1">Password</label>
+            <input type="password" name="password" required
+                   class="w-full border border-green-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none">
         </div>
 
-        <!-- Remember Me -->
-        <div class="block mb-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox"
-                    class="rounded border-gray-300 text-green-700 shadow-sm focus:ring-green-500"
-                    name="remember">
-                <span class="ms-2 text-sm text-green-700">{{ __('Remember me') }}</span>
-            </label>
+        <div>
+            <label class="block text-sm font-medium text-green-900 mb-1">Role</label>
+            <select name="role" required class="w-full border border-green-300 rounded-lg px-3 py-2">
+                <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+                <option value="staff" {{ old('role') === 'staff' ? 'selected' : '' }}>Staff</option>
+            </select>
         </div>
 
-        <!-- Submit Button -->
-        <div class="flex items-center justify-center mt-4">
-            <button type="submit"
-                class="w-full bg-green-700 text-white py-2 rounded hover:bg-green-800 transition">
-                {{ __('Log in') }}
-            </button>
-        </div>
-
-        <!-- Forgot Password -->
-        @if (Route::has('password.request'))
-            <p class="mt-4 text-center text-sm text-green-700">
-                <a href="{{ route('password.request') }}"
-                   class="underline hover:text-green-900">
-                    {{ __('Forgot your password?') }}
-                </a>
-            </p>
-        @endif
+        <button type="submit"
+                class="w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-2 rounded-lg transition">
+            Login
+        </button>
     </form>
+
+    <p class="mt-6 text-center text-sm text-green-700">© {{ date('Y') }} CTPD Management System</p>
 </div>
-@endsection
+
+</body>
+</html>

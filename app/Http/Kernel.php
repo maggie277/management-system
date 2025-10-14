@@ -34,6 +34,7 @@ class Kernel extends HttpKernel
 
     // Route middleware
     protected $routeMiddleware = [
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
         'auth' => \App\Http\Middleware\Authenticate::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'auth.staff' => \App\Http\Middleware\RedirectIfNotStaff::class, // must exist
@@ -43,7 +44,8 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'staff.session' => \App\Http\Middleware\StaffSessionMiddleware::class,
-        'is_admin' => \App\Http\Middleware\IsAdmin::class,
+        'is_admin' => \App\Http\Middleware\IsAdmin::class,,
+
 
     ];
 }

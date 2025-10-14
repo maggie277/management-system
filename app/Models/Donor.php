@@ -9,20 +9,11 @@ class Donor extends Model
 {
     use HasFactory;
 
-    /**
-     * Mass assignable attributes.
-     */
-    protected $fillable = [
-        'name',
-        'email',
-        'phone',
-    ];
+    protected $fillable = ['name', 'email', 'phone'];
 
-    /**
-     * A donor can have many budgets.
-     */
     public function budgets()
     {
         return $this->hasMany(Budget::class);
     }
 }
+

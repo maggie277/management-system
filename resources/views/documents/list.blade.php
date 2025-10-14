@@ -1,56 +1,72 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-green-900 leading-tight">
+        <h2 class="font-semibold text-2xl text-green-900 leading-tight">
             All Documents
         </h2>
     </x-slot>
 
-    <div class="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-lg shadow">
+    <div class="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+
+        <!-- Success Message -->
         @if(session('success'))
-            <div class="bg-green-100 text-green-800 p-2 mb-4 rounded">
+            <div class="bg-green-100 text-green-800 p-3 rounded-lg border-l-4 border-green-500 animate-fade-in">
                 {{ session('success') }}
             </div>
         @endif
 
+        <!-- Document Cards / Table -->
         @if($documents->isEmpty())
-            <p class="text-green-900">No documents uploaded yet.</p>
+            <p class="text-green-900 text-center">No documents uploaded yet.</p>
         @else
-            <table class="min-w-full bg-white border">
-                <thead>
-                    <tr class="bg-green-100 text-green-900">
-                        <th class="py-2 px-4 border-b text-left">Title</th>
-                        <th class="py-2 px-4 border-b text-left">Description</th>
-                        <th class="py-2 px-4 border-b text-left">Uploaded By</th>
-                        <th class="py-2 px-4 border-b text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($documents as $doc)
-                        <tr class="text-green-900">
-                            <td class="py-2 px-4 border-b">{{ $doc->title }}</td>
-                            <td class="py-2 px-4 border-b">{{ $doc->description }}</td>
-                            <td class="py-2 px-4 border-b">{{ $doc->uploadedBy->name ?? 'N/A' }}</td>
-                            <td class="py-2 px-4 border-b flex space-x-2">
+            <div class="overflow-x-auto bg-white shadow-lg rounded-lg p-4">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-green-100 text-green-900">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Title</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Description</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Uploaded By</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($documents as $doc)
+                        <tr class="hover:bg-green-50 transition">
+                            <td class="px-6 py-3 text-green-900 font-medium">{{ $doc->title }}</td>
+                            <td class="px-6 py-3 text-green-900">{{ $doc->description ?? '-' }}</td>
+                            <td class="px-6 py-3 text-green-900">{{ $doc->uploadedBy->name ?? 'N/A' }}</td>
+                            <td class="px-6 py-3 space-x-2 flex">
                                 <a href="{{ asset('storage/'.$doc->file_path) }}"
-                                   class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded" target="_blank">
+                                   target="_blank"
+                                   class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg shadow-sm transition">
                                     View
                                 </a>
                                 <a href="{{ route('documents.edit', $doc->id) }}"
-                                   class="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded">
+                                   class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-lg shadow-sm transition">
                                     Edit
                                 </a>
                                 <form action="{{ route('documents.destroy', $doc->id) }}" method="POST" onsubmit="return confirm('Are you sure?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded">
+                                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg shadow-sm transition">
                                         Delete
                                     </button>
                                 </form>
                             </td>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         @endif
     </div>
+
+    <style>
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease forwards;
+        }
+    </style>
 </x-app-layout>

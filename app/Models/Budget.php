@@ -14,22 +14,28 @@ class Budget extends Model
         'amount',
         'threshold',
         'currency',
-        'description',
+        'description'
     ];
 
-    /**
-     * A budget belongs to a donor.
-     */
+    // Relationships
     public function donor()
     {
         return $this->belongsTo(Donor::class);
     }
 
-    /**
-     * A budget has many expenses.
-     */
     public function expenses()
     {
         return $this->hasMany(Expense::class);
+    }
+
+    // Computed totals
+    public function getTotalExpensesAttribute()
+    {
+        return $this->expenses()->sum('amount');
+    }
+
+    public function getRemainingAttribute()
+    {
+        return $this->amount - $this->total_expenses;
     }
 }

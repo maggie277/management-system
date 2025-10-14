@@ -18,5 +18,7 @@ class Asset extends Model
         'purchase_date',
         'value',
         'status',
+        'name', 'category', 'description', 'serial_number',
+        'location', 'purchase_date', 'value', 'status', 'currency'
     ];
 }

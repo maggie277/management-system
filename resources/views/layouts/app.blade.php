@@ -14,7 +14,7 @@
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="font-sans antialiased bg-white">
+<body class="font-sans antialiased bg-white flex flex-col min-h-screen">
 
     <!-- Top Navbar -->
     <nav class="bg-green-700 shadow-md px-6 py-4 flex justify-between items-center text-white">
@@ -32,7 +32,7 @@
         </div>
     </nav>
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-1">
 
         <!-- Sidebar -->
         <aside class="w-64 bg-green-50 shadow-md p-4">
@@ -55,36 +55,41 @@
                 </a>
                 <a href="{{ route('budgets.index') }}"
                    class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
-                    Budgets
-                </a>
-                <a href="{{ route('expenses.index') }}"
-                   class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800">
-                    Expenses
+                    Finances
                 </a>
 
-         @if(auth()->user()->role === 'admin')
-            <a href="{{ route('admin.users.create') }}"
-               class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 mt-2">
-                Create User
-            </a>
-        @endif
-                <!-- Add more sidebar links here -->
+               @if(auth()->user()->role === 'admin')
+    <a href="{{ route('admin.users.create') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 mt-2">
+        Create User
+    </a>
+    <a href="{{ route('admin.staff.list') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 mt-2">
+        All Employees
+    </a>
+    <a href="{{ route('admin.tasks.index') }}" class="block px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 mt-2">
+        All Tasks
+    </a>
+@endif
             </nav>
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 p-6 bg-green-50">
+        <main class="flex-1 p-6 bg-green-50 flex flex-col">
             @isset($header)
                 <div class="mb-6 text-2xl font-semibold text-green-900">
                     {{ $header }}
                 </div>
             @endisset
 
-            <div class="bg-white shadow-sm rounded-lg p-6">
+            <div class="bg-white shadow-sm rounded-lg p-6 flex-1">
                 {{ $slot }}
             </div>
         </main>
-
     </div>
+
+    <!-- Footer -->
+    <footer class="bg-green-700 text-white py-4 text-center mt-auto">
+        Powered by <strong>Fortress Hub Technologies Limited</strong>
+    </footer>
+
 </body>
 </html>
