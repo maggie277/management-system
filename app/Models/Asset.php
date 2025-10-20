@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Asset extends Model
 {
@@ -11,14 +12,20 @@ class Asset extends Model
 
     protected $fillable = [
         'name',
+        'owner',
         'category',
         'description',
         'serial_number',
         'location',
         'purchase_date',
         'value',
+        'currency',
         'status',
-        'name', 'category', 'description', 'serial_number',
-        'location', 'purchase_date', 'value', 'status', 'currency'
+        'folder_id' // Make sure this is included
     ];
+
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(AssetFolder::class, 'folder_id');
+    }
 }

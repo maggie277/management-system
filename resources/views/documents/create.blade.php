@@ -32,9 +32,21 @@
                         <textarea name="description" id="description" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none transition" rows="4" placeholder="Optional description..."></textarea>
                     </div>
 
+                    <!-- Add Folder Selection -->
+                    <div>
+                        <label for="folder_id" class="block text-green-900 font-medium mb-1">Folder (Optional)</label>
+                        <select name="folder_id" id="folder_id" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-400 focus:outline-none transition">
+                            <option value="">No Folder (Unassigned)</option>
+                            @foreach($folders as $folder)
+                                <option value="{{ $folder->id }}">{{ $folder->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div>
                         <label for="file" class="block text-green-900 font-medium mb-1">Select File</label>
                         <input type="file" name="file" id="file" class="w-full text-gray-700 border border-gray-300 rounded-lg p-2 cursor-pointer hover:bg-green-50 transition" required>
+                        <p class="text-sm text-gray-500 mt-1">Supported formats: PDF, Word, Excel, PowerPoint. Max: 10MB</p>
                     </div>
 
                     <button type="submit" class="w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1">

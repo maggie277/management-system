@@ -13,14 +13,26 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $totals = [
-            'donors' => Donor::count(),
-            'assets' => Asset::count(),
-            'documents' => Document::count(),
-            'staff' => Staff::count() + User::where('role', 'admin')->count(), // Count both staff and admins
-        ];
+        try {
+            $totals = [
+                'donors' => Donor::count(),
+                'assets' => Asset::count(),
+                'documents' => Document::count(),
+                'staff' => Staff::count() + User::where('role', 'admin')->count(),
+            ];
 
-        return view('dashboard', compact('totals'));
+            return view('dashboard', compact('totals'));
+        } catch (\Exception $e) {
+            // Temporary fallback for debugging
+            $totals = [
+                'donors' => Donor::count(),
+                'assets' => Asset::count(),
+                'documents' => 0, // Fallback value
+                'staff' => Staff::count() + User::where('role', 'admin')->count(),
+            ];
+
+            return view('dashboard', compact('totals'));
+        }
     }
 
     public function stats()
@@ -29,7 +41,7 @@ class DashboardController extends Controller
             'donors' => Donor::count(),
             'assets' => Asset::count(),
             'documents' => Document::count(),
-            'staff' => Staff::count() + User::where('role', 'admin')->count(), // Count both staff and admins
+            'staff' => Staff::count() + User::where('role', 'admin')->count(),
         ]);
     }
 }

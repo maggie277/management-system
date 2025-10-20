@@ -29,25 +29,33 @@
         @endphp
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-700 transform transition hover:scale-105">
+            <!-- Total Documents Card -->
+            <a href="{{ route('documents.list') }}"
+               class="block bg-white rounded-lg shadow p-6 border-l-4 border-green-700 transform transition hover:scale-105 hover:shadow-lg cursor-pointer">
                 <h3 class="text-lg font-medium text-green-900 mb-2">Total Documents</h3>
                 <p class="text-3xl font-bold text-gray-800">{{ $totalDocuments }}</p>
-            </div>
+            </a>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-600 transform transition hover:scale-105">
+            <!-- PDFs Card -->
+            <a href="{{ route('documents.list') }}?type=pdf"
+               class="block bg-white rounded-lg shadow p-6 border-l-4 border-blue-600 transform transition hover:scale-105 hover:shadow-lg cursor-pointer">
                 <h3 class="text-lg font-medium text-green-900 mb-2">PDFs</h3>
                 <p class="text-3xl font-bold text-gray-800">{{ $totalPDF }}</p>
-            </div>
+            </a>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500 transform transition hover:scale-105">
+            <!-- Word Docs Card -->
+            <a href="{{ route('documents.list') }}?type=word"
+               class="block bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500 transform transition hover:scale-105 hover:shadow-lg cursor-pointer">
                 <h3 class="text-lg font-medium text-green-900 mb-2">Word Docs</h3>
                 <p class="text-3xl font-bold text-gray-800">{{ $totalWord }}</p>
-            </div>
+            </a>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-purple-600 transform transition hover:scale-105">
+            <!-- Excel Sheets Card -->
+            <a href="{{ route('documents.list') }}?type=excel"
+               class="block bg-white rounded-lg shadow p-6 border-l-4 border-purple-600 transform transition hover:scale-105 hover:shadow-lg cursor-pointer">
                 <h3 class="text-lg font-medium text-green-900 mb-2">Excel Sheets</h3>
                 <p class="text-3xl font-bold text-gray-800">{{ $totalExcel }}</p>
-            </div>
+            </a>
         </div>
 
         {{-- Latest Documents Table --}}

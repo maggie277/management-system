@@ -42,6 +42,7 @@
                     @php
                         $fields = [
                             'name' => 'Asset Name',
+                            'owner' => 'Asset Owner',
                             'category' => 'Category',
                             'description' => 'Description',
                             'serial_number' => 'Serial Number',

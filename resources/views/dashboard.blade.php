@@ -6,25 +6,29 @@
     <div class="py-10 max-w-7xl mx-auto px-6 space-y-8">
         <!-- Top Summary Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div class="bg-yellow-100 border-l-4 border-yellow-600 p-4 rounded-lg text-center shadow">
+            <!-- Donors Card -->
+            <a href="{{ route('donors.index') }}" class="block bg-yellow-100 border-l-4 border-yellow-600 p-4 rounded-lg text-center shadow hover:bg-yellow-200 transition-colors duration-200 cursor-pointer">
                 <p class="text-sm text-gray-600">Donors</p>
                 <h3 id="donorCount" class="text-2xl font-bold text-yellow-700">{{ $totals['donors'] ?? 0 }}</h3>
-            </div>
+            </a>
 
-            <div class="bg-blue-100 border-l-4 border-blue-600 p-4 rounded-lg text-center shadow">
+            <!-- Assets Card -->
+            <a href="{{ route('assets.index') }}" class="block bg-blue-100 border-l-4 border-blue-600 p-4 rounded-lg text-center shadow hover:bg-blue-200 transition-colors duration-200 cursor-pointer">
                 <p class="text-sm text-gray-600">Assets</p>
                 <h3 id="assetCount" class="text-2xl font-bold text-blue-700">{{ $totals['assets'] ?? 0 }}</h3>
-            </div>
+            </a>
 
-            <div class="bg-gray-100 border-l-4 border-gray-600 p-4 rounded-lg text-center shadow">
+            <!-- Documents Card -->
+            <a href="{{ route('documents.index') }}" class="block bg-gray-100 border-l-4 border-gray-600 p-4 rounded-lg text-center shadow hover:bg-gray-200 transition-colors duration-200 cursor-pointer">
                 <p class="text-sm text-gray-600">Documents</p>
                 <h3 id="docCount" class="text-2xl font-bold text-gray-700">{{ $totals['documents'] ?? 0 }}</h3>
-            </div>
+            </a>
 
-            <div class="bg-green-100 border-l-4 border-green-700 p-4 rounded-lg text-center shadow">
+            <!-- Employees Card -->
+            <a href="{{ route('admin.staff.list') }}" class="block bg-green-100 border-l-4 border-green-700 p-4 rounded-lg text-center shadow hover:bg-green-200 transition-colors duration-200 cursor-pointer">
                 <p class="text-sm text-gray-600">All Employees</p>
                 <h3 id="employeesCount" class="text-2xl font-bold text-green-800">{{ $totals['staff'] ?? 0 }}</h3>
-            </div>
+            </a>
         </div>
 
         <!-- System Overview Chart -->

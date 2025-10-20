@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+
     public function up(): void
     {
         Schema::create('assets', function (Blueprint $table) {
@@ -20,10 +21,17 @@ return new class extends Migration
             $table->enum('status', ['active','maintenance','disposed'])->default('active');
             $table->timestamps();
         });
+
+        // Migration to add folder_id to assets table
+Schema::table('assets', function (Blueprint $table) {
+    $table->foreignId('folder_id')->nullable()->constrained()->onDelete('set null');
+});
     }
+
 
     public function down(): void
     {
         Schema::dropIfExists('assets');
     }
+
 };

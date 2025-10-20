@@ -29,7 +29,9 @@ use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 // -------------------------------
 // 🔐 AUTH & LOGIN
 // -------------------------------
-Route::get('/', fn() => redirect()->route('login.form'));
+Route::get('/', function () {
+    return redirect('/login');
+});
 
 // Unified login for guests
 Route::middleware('guest')->group(function () {
@@ -40,7 +42,6 @@ Route::middleware('guest')->group(function () {
 // Logout (works for both guards)
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// -------------------------------
 // -------------------------------
 // 🟢 ADMIN ROUTES (web guard)
 // -------------------------------
@@ -61,8 +62,18 @@ Route::middleware(['auth:web'])->group(function () {
     Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
     // Assets
-    Route::resource('assets', AssetController::class);
-    Route::get('assets/list', [AssetController::class, 'list'])->name('assets.list');
+    Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
+    Route::get('/assets/create', [AssetController::class, 'create'])->name('assets.create');
+    Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
+    Route::get('/assets/list', [AssetController::class, 'list'])->name('assets.list');
+    Route::get('/assets/{asset}', [AssetController::class, 'show'])->name('assets.show');
+    Route::get('/assets/{asset}/edit', [AssetController::class, 'edit'])->name('assets.edit');
+    Route::put('/assets/{asset}', [AssetController::class, 'update'])->name('assets.update');
+    Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->name('assets.destroy');
+
+    // Asset Folder Routes
+    Route::post('/assets/create-folder', [AssetController::class, 'createFolder'])->name('assets.create-folder');
+    Route::patch('/asset-folders/{folder}', [AssetController::class, 'updateFolder'])->name('assets.update-folder');
 
     // Donors, Budgets, Expenses
     Route::resource('donors', DonorController::class);
@@ -73,7 +84,7 @@ Route::middleware(['auth:web'])->group(function () {
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users/store', [AdminUserController::class, 'store'])->name('admin.users.store');
 
-    // Staff List Route - CORRECT PLACEMENT
+    // Staff List Route
     Route::get('/admin/staff', [AdminUserController::class, 'staffList'])->name('admin.staff.list');
 
     // Admin Tasks
@@ -86,10 +97,9 @@ Route::middleware(['auth:web'])->group(function () {
         Route::delete('/{task}', [AdminTaskController::class, 'destroy'])->name('destroy');
     });
 
-
-    // Admin User Management
-     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
-    Route::post('/admin/users/store', [AdminUserController::class, 'store'])->name('admin.users.store');
+    // Document Folder routes (keep using original folders table)
+    Route::post('/documents/create-folder', [DocumentController::class, 'createFolder'])->name('documents.create-folder');
+    Route::delete('/folders/{folder}', [DocumentController::class, 'deleteFolder'])->name('folders.destroy');
 });
 
 // -------------------------------

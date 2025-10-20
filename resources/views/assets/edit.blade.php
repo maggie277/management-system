@@ -51,6 +51,14 @@
                                placeholder="Enter asset name" required>
                     </div>
 
+                    <!-- Owner -->
+                    <div class="relative">
+                        <label class="block text-green-900 font-medium mb-1">Owner</label>
+                        <input type="text" name="owner" value="{{ old('owner', $asset->owner) }}"
+                               class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-green-400 transition duration-300 hover:border-green-300"
+                               placeholder="Enter owner name">
+                    </div>
+
                     <!-- Category -->
                     <div class="relative">
                         <label class="block text-green-900 font-medium mb-1">Category</label>
@@ -99,13 +107,12 @@
                     </div>
 
                     <!-- Currency -->
-                   <div class="mb-4">
-    <label class="block text-green-900">Currency</label>
-    <input type="text" name="currency" value="{{ old('currency', $asset->currency) }}"
-           class="w-full border border-green-300 rounded p-2"
-           placeholder="Enter currency symbol or code">
-</div>
-
+                    <div class="relative">
+                        <label class="block text-green-900 font-medium mb-1">Currency</label>
+                        <input type="text" name="currency" value="{{ old('currency', $asset->currency) }}"
+                               class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-green-400 focus:border-green-400 transition duration-300 hover:border-green-300"
+                               placeholder="Enter currency symbol or code">
+                    </div>
 
                     <!-- Status -->
                     <div class="relative">
