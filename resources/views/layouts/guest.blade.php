@@ -5,26 +5,45 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', 'CTPD Management System') }}</title>
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <!-- Bootstrap CSS -->
+        @vite(['resources/css/app.css'])
 
-        <!-- Scripts -->
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <!-- Livewire Styles -->
+        @livewireStyles
     </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
-            <div>
-                <a href="/" wire:navigate>
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                </a>
-            </div>
+    <body class="bg-light">
+        <div class="container">
+            <div class="row justify-content-center min-vh-100 align-items-center">
+                <div class="col-md-8 col-lg-6">
+                    <!-- CTPD Header -->
+                    <div class="text-center mb-5">
+                        <div class="ctpd-bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                             style="width: 80px; height: 80px;">
+                            <i class="bi bi-building fs-2"></i>
+                        </div>
+                        <h1 class="h3 fw-bold text-dark">CTPD Portal</h1>
+                        <p class="text-muted">Centre for Trade Policy and Development</p>
+                    </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
-                {{ $slot }}
+                    <!-- Page Content -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-4">
+                            {{ $slot }}
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="text-center mt-4">
+                        <p class="text-muted small">&copy; {{ date('Y') }} CTPD. All rights reserved.</p>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- Bootstrap & Livewire Scripts -->
+        @vite(['resources/js/app.js'])
+        @livewireScripts
     </body>
 </html>

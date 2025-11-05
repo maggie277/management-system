@@ -1,71 +1,91 @@
-<?php
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTPD Portal - Login</title>
+    @vite(['resources/css/app.css'])
+</head>
+<body class="bg-light">
+    <div class="container">
+        <div class="row justify-content-center min-vh-100 align-items-center">
+            <div class="col-md-6 col-lg-5">
+                <!-- Header -->
+                <div class="text-center mb-4">
+                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                         style="width: 80px; height: 80px;">
+                        <i class="bi bi-shield-check fs-2"></i>
+                    </div>
+                    <h1 class="h2 fw-bold text-dark">CTPD Portal</h1>
+                    <p class="text-muted">Centre for Trade Policy and Development</p>
+                </div>
 
-use App\Livewire\Forms\LoginForm;
-use Illuminate\Support\Facades\Session;
-use Livewire\Attributes\Layout;
-use Livewire\Volt\Component;
+                <!-- Login Form -->
+                <div class="card shadow">
+                    <div class="card-body p-4">
+                        <h2 class="h4 text-center mb-4">Sign in to your account</h2>
 
-new #[Layout('layouts.guest')] class extends Component
-{
-    public LoginForm $form;
+                        <form method="POST" action="{{ route('login') }}">
+                            @csrf
 
-    /**
-     * Handle an incoming authentication request.
-     */
-    public function login(): void
-    {
-        $this->validate();
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label class="form-label">Email address</label>
+                                <input type="email"
+                                       name="email"
+                                       class="form-control"
+                                       value="{{ old('email') }}"
+                                       required
+                                       autofocus
+                                       placeholder="Enter your email">
+                                @error('email')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
 
-        $this->form->authenticate();
+                            <!-- Password -->
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password"
+                                       name="password"
+                                       class="form-control"
+                                       required
+                                       placeholder="Enter your password">
+                                @error('password')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                            </div>
 
-        Session::regenerate();
+                            <!-- Remember Me -->
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <label class="form-check-label" for="remember">Remember me</label>
+                            </div>
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
-    }
-}; ?>
+                            <!-- Submit -->
+                            <button type="submit" class="btn btn-success w-100 py-2">
+                                Sign In
+                            </button>
+                        </form>
 
-<div>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+                        <!-- Demo Info -->
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <p class="small text-muted mb-0 text-center">
+                                <strong>Demo:</strong> margret@ctpd.org.zm / password
+                            </p>
+                        </div>
+                    </div>
+                </div>
 
-    <form wire:submit="login">
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="form.email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
+                <!-- Footer -->
+                <div class="text-center mt-4">
+                    <p class="small text-muted">
+                        © 2025 Centre for Trade Policy and Development. All rights reserved.<br>
+                        Powered by Fortress Hub Technologies
+                    </p>
+                </div>
+            </div>
         </div>
-
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input wire:model="form.password" id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('form.password')" class="mt-2" />
-        </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember" class="inline-flex items-center">
-                <input wire:model="form.remember" id="remember" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}" wire:navigate>
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
-</div>
+    </div>
+</body>
+</html>

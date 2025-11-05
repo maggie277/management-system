@@ -1,3 +1,36 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'bootstrap';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+/* CTPD Custom Styles */
+.ctpd-primary {
+    color: #198754;
+}
+
+.ctpd-bg-primary {
+    background-color: #198754;
+}
+
+.ctpd-btn-primary {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.ctpd-btn-primary:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+
+/* Custom styles for login page */
+.login-container {
+    background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+    min-height: 100vh;
+}
+
+.login-card {
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.login-header {
+    background: #198754;
+}
