@@ -144,11 +144,13 @@
                                         </a>
                                     </li>
 
+                                    {{-- DONORS LINK for Management --}}
                                     <li class="nav-item">
-                                        <span class="nav-link disabled">
+                                        <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"
+                                           href="{{ route('donors.index') }}">
                                             <i class="bi bi-cash-coin me-2"></i>
                                             Donors
-                                        </span>
+                                        </a>
                                     </li>
                                 @endif
                             @endif
@@ -189,13 +191,41 @@
                                     </a>
                                 </li>
 
+                                {{-- DONORS LINK for Finance --}}
                                 <li class="nav-item">
-                                    <span class="nav-link disabled">
+                                    <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"
+                                       href="{{ route('donors.index') }}">
                                         <i class="bi bi-cash-coin me-2"></i>
                                         Donors
-                                    </span>
+                                    </a>
                                 </li>
                             @endif
+
+                            {{-- ========= ALWAYS VISIBLE DONORS LINK ========= --}}
+                            {{-- If the above conditions don't work, uncomment this section --}}
+                            {{--
+                            @if(!request()->routeIs('donors.*') &&
+                                Auth::user()->department !== 'Finance and Admin' &&
+                                !in_array(Auth::user()->position, [
+                                    'Executive Director',
+                                    'Head of Research',
+                                    'Head of Advocacy and Campaigns',
+                                    'M&E Specialist',
+                                    'Fundraising and Partnership Manager',
+                                    'Human Resource Manager'
+                                ]))
+                                <hr class="text-white-50">
+                                <div class="sidebar-section-title">Tools</div>
+
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"
+                                       href="{{ route('donors.index') }}">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        Donors
+                                    </a>
+                                </li>
+                            @endif
+                            --}}
 
                             {{-- ========= OTHER DEPARTMENTS ========= --}}
                             @if(
@@ -219,7 +249,30 @@
                                         Department Tools
                                     </span>
                                 </li>
+
+                                {{-- Optional: Add Donors link for other departments --}}
+                                {{--
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"
+                                       href="{{ route('donors.index') }}">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        Donors
+                                    </a>
+                                </li>
+                                --}}
                             @endif
+
+                            {{-- ========= DEBUG INFORMATION (Remove in production) ========= --}}
+                            {{--
+                            <div style="display: none;">
+                                <!-- Debug info to check user permissions -->
+                                User Department: {{ Auth::user()->department }}<br>
+                                User Position: {{ Auth::user()->position }}<br>
+                                User Role: {{ Auth::user()->role }}<br>
+                                Is Finance: {{ Auth::user()->department === 'Finance and Admin' ? 'Yes' : 'No' }}<br>
+                                Is Management: {{ in_array(Auth::user()->position, ['Executive Director', 'Head of Research', 'Head of Advocacy and Campaigns', 'M&E Specialist', 'Fundraising and Partnership Manager', 'Human Resource Manager']) ? 'Yes' : 'No' }}
+                            </div>
+                            --}}
 
                         </ul>
                     </div>

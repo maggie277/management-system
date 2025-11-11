@@ -1,8 +1,93 @@
 @extends('layouts.app')
 
-@section('content')
-<div class="container-fluid">
+@section('title', 'Documents')
 
+@section('content')
+<style>
+.document-list-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(25, 135, 84, 0.15);
+    background: linear-gradient(145deg, #ffffff, #f3fef6);
+    box-shadow: 0 3px 10px rgba(25, 135, 84, 0.1);
+}
+.document-list-card .card-header {
+    background: linear-gradient(145deg, #198754, #157347);
+    color: white;
+    border-radius: 1rem 1rem 0 0 !important;
+    border: none;
+    padding: 1rem 1.5rem;
+}
+.search-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(25, 135, 84, 0.15);
+    background: linear-gradient(145deg, #ffffff, #f8fff9);
+    box-shadow: 0 3px 10px rgba(25, 135, 84, 0.1);
+}
+.category-badge {
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+.category-badge.active {
+    background: linear-gradient(145deg, #198754, #157347) !important;
+}
+.category-badge:not(.active):hover {
+    background: rgba(25, 135, 84, 0.1) !important;
+}
+.btn-success {
+    background: linear-gradient(145deg, #198754, #157347);
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(25, 135, 84, 0.3);
+}
+.btn-outline-success {
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-outline-success:hover {
+    transform: translateY(-2px);
+}
+.badge-success {
+    background: linear-gradient(145deg, #198754, #157347) !important;
+}
+.document-table {
+    font-size: 0.875rem;
+}
+.document-table thead th {
+    background: rgba(25, 135, 84, 0.1);
+    color: #198754;
+    font-weight: 600;
+    border-bottom: 2px solid #198754;
+    padding: 1rem 0.75rem;
+}
+.document-table tbody tr {
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+.document-table tbody tr:hover {
+    background-color: rgba(25, 135, 84, 0.05);
+    border-left: 3px solid #198754;
+    transform: translateX(2px);
+}
+.document-table td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(25, 135, 84, 0.1);
+}
+.file-type-badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+}
+</style>
+
+<div class="container-fluid">
     {{-- Success / Error Messages --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
@@ -19,172 +104,96 @@
     @endif
 
     {{-- Page Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h4 mb-1">
-                @if(isset($currentFolder))
-                    <i class="bi bi-folder-fill text-warning me-2"></i>{{ $currentFolder->name }}
-                @elseif(isset($category))
-                    <i class="bi bi-collection-fill text-success me-2"></i>{{ $category->name }} Documents
-                @else
-                    <i class="bi bi-files me-2"></i>All Documents
-                @endif
-            </h1>
-            <p class="text-muted mb-0">
-                @if(isset($currentFolder))
-                    {{ $currentFolder->description ?: 'Browse documents in this folder' }}
-                    <span class="badge bg-success ms-2">{{ $category->name }} Category</span>
-                @elseif(isset($category))
-                    {{ $category->description }}
-                @else
-                    Browse and manage all uploaded documents
-                @endif
-            </p>
-
-            {{-- Breadcrumbs --}}
-            @if(isset($currentFolder) && isset($category))
-                <nav aria-label="breadcrumb" class="mt-2">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('documents.list') }}" class="text-success text-decoration-none">
-                                <i class="bi bi-house me-1"></i>Root
-                            </a>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('documents.category', $category) }}" class="text-success text-decoration-none">
-                                {{ $category->name }}
-                            </a>
-                        </li>
-                        @php
-                            $breadcrumbs = [];
-                            $folder = $currentFolder;
-                            while($folder) {
-                                $breadcrumbs[] = $folder;
-                                $folder = $folder->parent;
-                            }
-                            $breadcrumbs = array_reverse($breadcrumbs);
-                        @endphp
-                        @foreach($breadcrumbs as $crumb)
-                            @if(!$loop->last)
-                                <li class="breadcrumb-item">
-                                    <a href="{{ route('documents.category', ['category' => $category, 'folder_id' => $crumb->id]) }}" class="text-success text-decoration-none">
-                                        {{ $crumb->name }}
-                                    </a>
-                                </li>
-                            @else
-                                <li class="breadcrumb-item active">{{ $crumb->name }}</li>
-                            @endif
-                        @endforeach
-                    </ol>
-                </nav>
-            @elseif(isset($category))
-                <nav aria-label="breadcrumb" class="mt-2">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="{{ route('documents.list') }}" class="text-success text-decoration-none">
-                                <i class="bi bi-house me-1"></i>Root
-                            </a>
-                        </li>
+    <div class="page-title-box py-2">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h4 class="page-title mb-1">
+                    @if(isset($currentFolder))
+                        <i class="bi bi-folder-fill text-warning me-2"></i>{{ $currentFolder->name }}
+                    @elseif(isset($category))
+                        <i class="bi bi-collection-fill text-success me-2"></i>{{ $category->name }} Documents
+                    @else
+                        <i class="bi bi-files me-2"></i>All Documents
+                    @endif
+                </h4>
+                <ol class="breadcrumb m-0">
+                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('documents.index') }}">Documents</a></li>
+                    @if(isset($category))
                         <li class="breadcrumb-item active">{{ $category->name }}</li>
-                    </ol>
-                </nav>
-            @endif
-        </div>
-        <div>
-            <a href="{{ route('documents.create') }}" class="btn btn-success">
-                <i class="bi bi-upload me-1"></i>Upload Document
-            </a>
-            @if(isset($category))
-                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#createFolderModal">
-                    <i class="bi bi-folder-plus me-1"></i>Create Folder
-                </button>
-            @endif
-        </div>
-    </div>
-
-    {{-- Category Badges (Top) --}}
-    <div class="mb-4">
-        <div class="d-flex flex-wrap gap-2">
-            @foreach($categories as $cat)
-                <a href="{{ route('documents.category', $cat) }}" class="badge {{ isset($category) && $category->id == $cat->id ? 'bg-success' : 'bg-white text-success border' }} py-2 px-3 text-decoration-none">
-                    <i class="bi bi-collection me-1"></i>{{ $cat->name }} ({{ $cat->documents_count }})
-                </a>
-            @endforeach
+                    @else
+                        <li class="breadcrumb-item active">All Documents</li>
+                    @endif
+                </ol>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="d-flex gap-2 justify-content-end">
+                    <a href="{{ route('documents.create') }}" class="btn btn-success">
+                        <i class="bi bi-cloud-upload me-1"></i> Upload
+                    </a>
+                    @if(isset($category) && !request('search'))
+                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#createFolderModal">
+                            <i class="bi bi-folder-plus me-1"></i> Folder
+                        </button>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 
-    {{-- Search + Filter --}}
-    <div class="card mb-4">
+    {{-- Search and Categories --}}
+    <div class="card search-card mb-4">
         <div class="card-body">
-            <form action="{{ isset($category) ? route('documents.category', $category) : route('documents.list') }}" method="GET" class="row g-3 align-items-center">
-                @if(isset($category))
-                    <input type="hidden" name="category_id" value="{{ $category->id }}">
-                @endif
-                @if(isset($currentFolder))
-                    <input type="hidden" name="folder_id" value="{{ $currentFolder->id }}">
-                @endif
-
-                <div class="col-md-4">
-                    <input type="text" name="search" class="form-control" placeholder="Search documents..."
-                           value="{{ request('search') }}">
-                </div>
-
-                <div class="col-md-3">
-                    <select name="type" class="form-select">
-                        <option value="">All File Types</option>
-                        <option value="pdf" {{ request('type') == 'pdf' ? 'selected' : '' }}>PDF</option>
-                        <option value="word" {{ request('type') == 'word' ? 'selected' : '' }}>Word</option>
-                        <option value="excel" {{ request('type') == 'excel' ? 'selected' : '' }}>Excel</option>
-                    </select>
-                </div>
-
-                @if(isset($category) && $folders->count() > 0)
-                <div class="col-md-3">
-                    <select name="folder_id" class="form-select">
-                        <option value="">All Folders</option>
-                        @foreach($folders as $folder)
-                            <option value="{{ $folder->id }}" {{ request('folder_id') == $folder->id ? 'selected' : '' }}>
-                                {{ $folder->name }}
-                            </option>
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ route('documents.list') }}"
+                           class="category-badge {{ !isset($category) ? 'active text-white' : 'bg-white text-success border' }} text-decoration-none">
+                            <i class="bi bi-collection me-1"></i>All Documents ({{ $totalDocuments ?? 0 }})
+                        </a>
+                        @foreach($categories as $cat)
+                            <a href="{{ route('documents.category', $cat) }}"
+                               class="category-badge {{ isset($category) && $category->id == $cat->id ? 'active text-white' : 'bg-white text-success border' }} text-decoration-none">
+                                <i class="bi bi-collection me-1"></i>{{ $cat->name }} ({{ $cat->documents_count }})
+                            </a>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
-                @endif
-
-                <div class="col-md-2">
-                    <select name="sort" class="form-select">
-                        <option value="latest" {{ request('sort', 'latest') == 'latest' ? 'selected' : '' }}>Latest</option>
-                        <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Oldest</option>
-                        <option value="title_asc" {{ request('sort') == 'title_asc' ? 'selected' : '' }}>Title A-Z</option>
-                        <option value="title_desc" {{ request('sort') == 'title_desc' ? 'selected' : '' }}>Title Z-A</option>
-                    </select>
+                <div class="col-md-4">
+                    <form action="{{ isset($category) ? route('documents.category', $category) : route('documents.list') }}" method="GET" class="d-flex gap-2">
+                        <input type="text" name="search" class="form-control" placeholder="Search documents..."
+                               value="{{ request('search') }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        @if(request('search'))
+                            <a href="{{ isset($category) ? route('documents.category', $category) : route('documents.list') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x"></i>
+                            </a>
+                        @endif
+                    </form>
                 </div>
-
-                <div class="col-12 text-end">
-                    <button type="submit" class="btn btn-success">Apply Filters</button>
-                    <a href="{{ isset($category) ? route('documents.category', $category) : route('documents.list') }}" class="btn btn-outline-secondary">Clear</a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    {{-- Subfolders Section -- Show in category view --}}
-    @if(isset($category) && $subfolders->count() > 0)
+    {{-- Folders Section - ONLY SHOW WHEN NOT SEARCHING --}}
+    @if(isset($category) && isset($subfolders) && $subfolders->count() > 0 && !request('search'))
         <div class="card mb-4">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
+            <div class="card-header" style="background: linear-gradient(145deg, #198754, #157347); color: white; border-radius: 1rem 1rem 0 0;">
+                <h5 class="card-title mb-0 text-white">
                     <i class="bi bi-folder-symlink me-2"></i>Folders in {{ $category->name }}
-                </h6>
-                <span class="badge bg-success">{{ $subfolders->count() }} folders</span>
+                    <span class="badge bg-light text-success ms-2">{{ $subfolders->count() }} folders</span>
+                </h5>
             </div>
             <div class="card-body">
                 <div class="row">
                     @foreach($subfolders as $folder)
                         <div class="col-md-3 mb-3">
-                            <div class="card folder-card h-100 text-center">
+                            <div class="card h-100 text-center" style="border-radius: 0.75rem; border: 1px solid rgba(25, 135, 84, 0.15);">
                                 <div class="card-body">
                                     <i class="bi bi-folder-fill text-warning display-6"></i>
-                                    <h6 class="card-title mt-2">{{ $folder->name }}</h6>
+                                    <h6 class="card-title mt-2 text-success">{{ $folder->name }}</h6>
                                     <p class="card-text small text-muted">
                                         <i class="bi bi-file-earmark me-1"></i>{{ $folder->documents_count }} documents
                                         <br>
@@ -208,33 +217,35 @@
         </div>
     @endif
 
-    {{-- Documents Table --}}
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                @if(isset($currentFolder))
+    {{-- Documents Table -- ALWAYS SHOW --}}
+    <div class="card document-list-card">
+        <div class="card-header">
+            <h5 class="card-title mb-0 text-white">
+                @if(request('search'))
+                    <i class="bi bi-search me-2"></i>Search Results for "{{ request('search') }}"
+                @elseif(isset($currentFolder))
                     <i class="bi bi-file-earmark-text me-2"></i>Documents in "{{ $currentFolder->name }}"
                 @elseif(isset($category))
                     <i class="bi bi-file-earmark-text me-2"></i>Documents in {{ $category->name }}
                 @else
                     <i class="bi bi-file-earmark-text me-2"></i>All Documents
                 @endif
-                <span class="badge bg-success ms-2">{{ $documents->count() }}</span>
+                <span class="badge bg-light text-success ms-2">{{ $documents->count() }}</span>
             </h5>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
             @if($documents->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                    <table class="table table-hover document-table mb-0">
+                        <thead>
                             <tr>
-                                <th>Title</th>
-                                <th>Category</th>
-                                <th>Folder</th>
-                                <th>Type</th>
-                                <th>Uploaded By</th>
-                                <th>Date</th>
-                                <th>Actions</th>
+                                <th width="25%">Document Title</th>
+                                <th width="15%">Category</th>
+                                <th width="15%">Folder</th>
+                                <th width="10%">Type</th>
+                                <th width="15%">Uploaded By</th>
+                                <th width="10%">Date</th>
+                                <th width="10%">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -242,9 +253,9 @@
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                                            <i class="bi bi-file-earmark-text text-success me-2"></i>
                                             <div>
-                                                <strong>{{ $document->title }}</strong>
+                                                <strong class="text-success">{{ $document->title }}</strong>
                                                 @if($document->description)
                                                     <br><small class="text-muted">{{ Str::limit($document->description, 50) }}</small>
                                                 @endif
@@ -253,11 +264,11 @@
                                     </td>
                                     <td>
                                         @if($document->category_id && $document->documentCategory)
-                                            <span class="badge bg-success text-white">
-                                                <i class="bi bi-collection me-1"></i>{{ $document->documentCategory->name }}
+                                            <span class="badge badge-success">
+                                                {{ $document->documentCategory->name }}
                                             </span>
                                         @else
-                                            <span class="badge bg-white text-success border">Uncategorized</span>
+                                            <span class="badge bg-secondary">Uncategorized</span>
                                         @endif
                                     </td>
                                     <td>
@@ -270,12 +281,16 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary">
+                                        <span class="badge file-type-badge bg-secondary">
                                             {{ strtoupper(pathinfo($document->file_path, PATHINFO_EXTENSION)) }}
                                         </span>
                                     </td>
-                                    <td>{{ $document->user->name ?? 'N/A' }}</td>
-                                    <td>{{ $document->created_at->format('M j, Y') }}</td>
+                                    <td>
+                                        <small>{{ $document->user->name ?? 'N/A' }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ $document->created_at->format('M j, Y') }}</small>
+                                    </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ route('documents.show', $document) }}" class="btn btn-outline-success" title="View">
@@ -296,9 +311,11 @@
                 </div>
             @else
                 <div class="text-center py-5">
-                    <i class="bi bi-folder-x display-1 text-muted"></i>
-                    <h4 class="text-muted mt-3">
-                        @if(isset($currentFolder))
+                    <i class="bi bi-folder-x display-1 text-muted mb-3"></i>
+                    <h4 class="text-muted">
+                        @if(request('search'))
+                            No documents found for "{{ request('search') }}"
+                        @elseif(isset($currentFolder))
                             No documents found in this folder
                         @elseif(isset($category))
                             No documents found in {{ $category->name }} category
@@ -306,28 +323,18 @@
                             No documents found
                         @endif
                     </h4>
-                    <p class="text-muted mb-3">
-                        @if(isset($category) && $subfolders->count() == 0)
-                            This category has no folders or documents yet.
-                        @endif
-                    </p>
+                    <p class="text-muted mb-3">Upload your first document to get started</p>
                     <a href="{{ route('documents.create') }}" class="btn btn-success">
-                        <i class="bi bi-upload me-1"></i>Upload Document
+                        <i class="bi bi-cloud-upload me-1"></i> Upload Document
                     </a>
-                    @if(isset($category))
-                        <button type="button" class="btn btn-outline-success ms-2" data-bs-toggle="modal" data-bs-target="#createFolderModal">
-                            <i class="bi bi-folder-plus me-1"></i>Create Folder
-                        </button>
-                    @endif
                 </div>
             @endif
         </div>
     </div>
-
 </div>
 
 <!-- Create Folder Modal -->
-@if(isset($category))
+@if(isset($category) && !request('search'))
 <div class="modal fade" id="createFolderModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -350,15 +357,6 @@
                         <label class="form-label">Description</label>
                         <textarea name="description" class="form-control" rows="3" placeholder="Optional folder description"></textarea>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Parent Folder</label>
-                        <select name="parent_id" class="form-select">
-                            <option value="">No Parent (Top Level)</option>
-                            @foreach($folders->where('category_id', $category->id) as $parentFolder)
-                                <option value="{{ $parentFolder->id }}">{{ $parentFolder->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -366,29 +364,8 @@
                 </div>
             </form>
         </div>
+
     </div>
 </div>
 @endif
-
-<style>
-.folder-card {
-    transition: transform 0.2s;
-    border: 1px solid #e9ecef;
-}
-.folder-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-.breadcrumb {
-    background-color: transparent;
-    padding: 0;
-    margin-bottom: 0;
-}
-.table-hover tbody tr:hover {
-    background-color: #f8f9fa;
-}
-.card {
-    border-radius: 0.5rem;
-}
-</style>
 @endsection

@@ -9,7 +9,9 @@ use App\Http\Controllers\FolderController;
 use App\Http\Controllers\AssetController;
 use App\Models\Asset;
 use App\Models\DepreciationYear;
- use App\Http\Controllers\NonDepreciableAssetController;
+use App\Http\Controllers\NonDepreciableAssetController;
+use App\Http\Controllers\DonorController;
+use App\Http\Controllers\TaskController;
 
 // Redirect root to login
 Route::redirect('/', '/login');
@@ -24,8 +26,10 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
-    // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // ====================
+    // DASHBOARD ROUTE (FIXED - Only one route)
+    // ====================
+    Route::get('/dashboard', [TaskController::class, 'dashboard'])->name('dashboard');
 
     // ====================
     // DOCUMENT ROUTES
@@ -46,9 +50,16 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('assets', AssetController::class);
 
     // ====================
+    // DONOR ROUTES
+    // ====================
+    Route::get('/donors-list', [DonorController::class, 'list'])->name('donors.list');
+    Route::resource('donors', DonorController::class);
+    Route::get('/donors/{donor}/download-document', [DonorController::class, 'downloadDocument'])->name('donors.download-document');
+    Route::post('/donors/{donor}/toggle-status', [DonorController::class, 'toggleStatus'])->name('donors.toggle-status');
+
+    // ====================
     // ASSET REGISTER ROUTES
     // ====================
-
     // Main Asset Register Route
     Route::get('/asset-register', function(Request $request) {
         $assets = Asset::orderBy('name')->get();
@@ -61,7 +72,6 @@ Route::middleware(['auth'])->group(function () {
     // ====================
     // DEPRECIATION YEAR MANAGEMENT ROUTES
     // ====================
-
     Route::prefix('depreciation-years')->name('depreciation-years.')->group(function () {
         // Year management page
         Route::get('/', function() {
@@ -139,21 +149,8 @@ Route::middleware(['auth'])->group(function () {
     // ====================
     // ADDITIONAL ASSET ROUTES
     // ====================
-
-
-
-
-// New non-depreciable asset routes
-Route::resource('non-depreciable-assets', NonDepreciableAssetController::class);
-
-// Update dashboard route to show both types
-Route::get('/dashboard', function () {
-    $depreciableAssets = \App\Models\Asset::count();
-    $nonDepreciableAssets = \App\Models\NonDepreciableAsset::count();
-    $totalAssets = $depreciableAssets + $nonDepreciableAssets;
-
-    return view('dashboard', compact('totalAssets', 'depreciableAssets', 'nonDepreciableAssets'));
-})->name('dashboard');
+    // New non-depreciable asset routes
+    Route::resource('non-depreciable-assets', NonDepreciableAssetController::class);
 
     // Quick asset actions
     Route::get('/assets/category/{category}', [AssetController::class, 'byCategory'])->name('assets.category');
@@ -161,9 +158,15 @@ Route::get('/dashboard', function () {
     Route::post('/assets/{asset}/maintenance', [AssetController::class, 'maintenance'])->name('assets.maintenance');
 
     // ====================
+    // TASK MANAGEMENT ROUTES
+    // ====================
+    Route::resource('tasks', TaskController::class);
+    Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
+    Route::put('/tasks/{task}/review', [TaskController::class, 'submitReview'])->name('tasks.submitReview');
+
+    // ====================
     // API ROUTES FOR AJAX
     // ====================
-
     Route::prefix('api')->group(function () {
         // Get asset depreciation data for specific year
         Route::get('/assets/{asset}/depreciation/{year}', function($assetId, $year) {
@@ -186,7 +189,6 @@ Route::get('/dashboard', function () {
     // ====================
     // TEST ROUTES (Remove in production)
     // ====================
-
     Route::get('/test-assets', function() {
         return response()->json([
             'total_assets' => Asset::count(),
