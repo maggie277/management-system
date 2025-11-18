@@ -62,14 +62,6 @@ Route::get('/documents', [DocumentController::class, 'index'])->name('documents.
     Route::resource('assets', AssetController::class);
 
     // ====================
-    // DONOR ROUTES
-    // ====================
-    Route::get('/donors-list', [DonorController::class, 'list'])->name('donors.list');
-    Route::resource('donors', DonorController::class);
-    Route::get('/donors/{donor}/download-document', [DonorController::class, 'downloadDocument'])->name('donors.download-document');
-    Route::post('/donors/{donor}/toggle-status', [DonorController::class, 'toggleStatus'])->name('donors.toggle-status');
-
-    // ====================
     // ASSET REGISTER ROUTES
     // ====================
     Route::get('/asset-register', function(Request $request) {
@@ -157,6 +149,13 @@ Route::get('/documents', [DocumentController::class, 'index'])->name('documents.
     Route::get('/assets/category/{category}', [AssetController::class, 'byCategory'])->name('assets.category');
     Route::post('/assets/{asset}/assign', [AssetController::class, 'assign'])->name('assets.assign');
     Route::post('/assets/{asset}/maintenance', [AssetController::class, 'maintenance'])->name('assets.maintenance');
+ // ====================
+    // DONOR ROUTES
+    // ====================
+    Route::get('/donors-list', [DonorController::class, 'list'])->name('donors.list');
+    Route::resource('donors', DonorController::class);
+    Route::get('/donors/{donor}/download-document', [DonorController::class, 'downloadDocument'])->name('donors.download-document');
+    Route::post('/donors/{donor}/toggle-status', [DonorController::class, 'toggleStatus'])->name('donors.toggle-status');
 
     // ====================
     // TASK MANAGEMENT ROUTES

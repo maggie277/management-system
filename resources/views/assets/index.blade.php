@@ -116,7 +116,7 @@
                         <div class="col-md-3">
                             <div class="stat-card text-center p-4">
                                 <div class="stat-value">{{ $nonDepreciableActiveCount }}</div>
-                                <div class="stat-label">Active</div>
+                                <div class="stat-labe-l">Active</div>
                             </div>
                         </div>
                         <div class="col-md-3">

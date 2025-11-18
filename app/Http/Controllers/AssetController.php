@@ -78,8 +78,7 @@ class AssetController extends Controller
             'depreciation_method' => 'required|in:straight_line,reducing_balance',
             'location' => 'nullable|string|max:255',
             'remark' => 'nullable|string',
-            'assigned_to' => 'nullable|exists:users,id',
-            'is_depreciable' => 'required|boolean',
+
         ]);
 
         // Create asset first
@@ -145,8 +144,6 @@ class AssetController extends Controller
             'depreciation_method' => 'required|in:straight_line,reducing_balance',
             'location' => 'nullable|string|max:255',
             'remark' => 'nullable|string',
-            'assigned_to' => 'nullable|exists:users,id',
-            'is_depreciable' => 'required|boolean',
         ]);
 
         \Log::info('Validated data: ', $validated);
@@ -190,4 +187,5 @@ class AssetController extends Controller
         return redirect()->route('assets.index')
             ->with('success', 'Asset deleted successfully.');
     }
+
 }

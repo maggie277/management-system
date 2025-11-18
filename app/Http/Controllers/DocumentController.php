@@ -16,6 +16,17 @@ use Illuminate\Support\Facades\DB;
 class DocumentController extends Controller
 {
     /**
+     * Display the documents dashboard (index page)
+     */
+    public function index()
+    {
+        // Get all categories for the dashboard
+        $categories = Category::all();
+
+        return view('documents.index', compact('categories'));
+    }
+
+    /**
      * Display a list of documents with folder support
      */
     public function list(Request $request)
