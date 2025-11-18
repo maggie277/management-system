@@ -24,4 +24,28 @@ class Category extends Model
     {
         return $this->hasMany(Document::class);
     }
+
+    /**
+     * Get the folders for the category
+     */
+    public function folders(): HasMany
+    {
+        return $this->hasMany(Folder::class);
+    }
+
+    /**
+     * Get documents count with folder filtering
+     */
+    public function getDocumentsCountAttribute()
+    {
+        return $this->documents()->count();
+    }
+
+    /**
+     * Get folders count
+     */
+    public function getFoldersCountAttribute()
+    {
+        return $this->folders()->count();
+    }
 }

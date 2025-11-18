@@ -27,22 +27,34 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
     // ====================
-    // DASHBOARD ROUTE (FIXED - Only one route)
+    // DASHBOARD ROUTE
     // ====================
     Route::get('/dashboard', [TaskController::class, 'dashboard'])->name('dashboard');
 
     // ====================
-    // DOCUMENT ROUTES
+    // DOCUMENT ROUTES (CORRECTED)
     // ====================
-    Route::resource('documents', DocumentController::class);
-    Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::get('/documents-list', [DocumentController::class, 'list'])->name('documents.list');
     Route::get('/documents/category/{category}', [DocumentController::class, 'byCategory'])->name('documents.category');
+    Route::get('/documents/folder/{categoryId}/{folderId}', [DocumentController::class, 'openFolder'])->name('documents.folder');
+
+    // Document CRUD routes
+    Route::get('/documents/create', [DocumentController::class, 'create'])->name('documents.create');
+    Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store'); // This is the POST route
+    Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+    Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
+    Route::put('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    // In your routes/web.php, add this route:
+Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
 
     // ====================
     // FOLDER ROUTES
     // ====================
+
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
+    Route::get('/categories/{category}/folders/{folder}', [FolderController::class, 'show'])->name('folders.show');
 
     // ====================
     // ASSET ROUTES
@@ -60,7 +72,6 @@ Route::middleware(['auth'])->group(function () {
     // ====================
     // ASSET REGISTER ROUTES
     // ====================
-    // Main Asset Register Route
     Route::get('/asset-register', function(Request $request) {
         $assets = Asset::orderBy('name')->get();
         $years = DepreciationYear::getActiveYears();
@@ -73,13 +84,11 @@ Route::middleware(['auth'])->group(function () {
     // DEPRECIATION YEAR MANAGEMENT ROUTES
     // ====================
     Route::prefix('depreciation-years')->name('depreciation-years.')->group(function () {
-        // Year management page
         Route::get('/', function() {
             $years = DepreciationYear::orderBy('position')->get();
             return view('assets.years-management', compact('years'));
         })->name('index');
 
-        // Add new year
         Route::post('/add', function(Request $request) {
             $request->validate([
                 'year' => 'required|integer|min:2011|max:2100',
@@ -96,7 +105,6 @@ Route::middleware(['auth'])->group(function () {
             }
         })->name('add');
 
-        // Reorder years
         Route::post('/reorder', function(Request $request) {
             $request->validate([
                 'years' => 'required|array'
@@ -107,7 +115,6 @@ Route::middleware(['auth'])->group(function () {
             return response()->json(['success' => true]);
         })->name('reorder');
 
-        // Update column style
         Route::post('/{id}/update-style', function(Request $request, $id) {
             $year = DepreciationYear::findOrFail($id);
 
@@ -119,7 +126,6 @@ Route::middleware(['auth'])->group(function () {
             return response()->json(['success' => true]);
         })->name('update-style');
 
-        // Toggle year visibility
         Route::post('/{id}/toggle', function($id) {
             $year = DepreciationYear::findOrFail($id);
             $year->update(['is_active' => !$year->is_active]);
@@ -129,13 +135,11 @@ Route::middleware(['auth'])->group(function () {
                 ->with('success', "Year {$year->year} column {$action}");
         })->name('toggle');
 
-        // Delete year
         Route::delete('/{id}', function($id) {
             $year = DepreciationYear::findOrFail($id);
             $deletedYear = $year->year;
             $year->delete();
 
-            // Reorder remaining years
             $years = DepreciationYear::orderBy('position')->get();
             foreach ($years as $index => $year) {
                 $year->update(['position' => $index + 1]);
@@ -149,10 +153,7 @@ Route::middleware(['auth'])->group(function () {
     // ====================
     // ADDITIONAL ASSET ROUTES
     // ====================
-    // New non-depreciable asset routes
     Route::resource('non-depreciable-assets', NonDepreciableAssetController::class);
-
-    // Quick asset actions
     Route::get('/assets/category/{category}', [AssetController::class, 'byCategory'])->name('assets.category');
     Route::post('/assets/{asset}/assign', [AssetController::class, 'assign'])->name('assets.assign');
     Route::post('/assets/{asset}/maintenance', [AssetController::class, 'maintenance'])->name('assets.maintenance');
@@ -168,7 +169,6 @@ Route::middleware(['auth'])->group(function () {
     // API ROUTES FOR AJAX
     // ====================
     Route::prefix('api')->group(function () {
-        // Get asset depreciation data for specific year
         Route::get('/assets/{asset}/depreciation/{year}', function($assetId, $year) {
             $asset = Asset::findOrFail($assetId);
 
@@ -179,7 +179,6 @@ Route::middleware(['auth'])->group(function () {
             ]);
         });
 
-        // Get all years data
         Route::get('/depreciation-years', function() {
             $years = DepreciationYear::getActiveYears();
             return response()->json($years);
@@ -187,7 +186,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ====================
-    // TEST ROUTES (Remove in production)
+    // TEST ROUTES
     // ====================
     Route::get('/test-assets', function() {
         return response()->json([

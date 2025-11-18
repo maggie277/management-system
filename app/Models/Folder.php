@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Folder extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -57,5 +58,37 @@ class Folder extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
+    }
+
+    /**
+     * Scope for root folders (no parent)
+     */
+    public function scopeRoot($query)
+    {
+        return $query->whereNull('parent_id');
+    }
+
+    /**
+     * Get the folder path as a string
+     */
+    public function getPathAttribute(): string
+    {
+        $path = [];
+        $folder = $this;
+
+        while ($folder) {
+            $path[] = $folder->name;
+            $folder = $folder->parent;
+        }
+
+        return implode(' / ', array_reverse($path));
+    }
+
+    /**
+     * Check if folder has any content (documents or subfolders)
+     */
+    public function getHasContentAttribute(): bool
+    {
+        return $this->documents()->count() > 0 || $this->children()->count() > 0;
     }
 }
