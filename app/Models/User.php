@@ -21,6 +21,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'position',
+        'department',
     ];
 
     /**
@@ -44,5 +47,40 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Check if user is an admin
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'system_admin' ||
+               $this->position === 'Executive Director';
+    }
+
+    /**
+     * Check if user is management
+     */
+    public function isManagement()
+    {
+        $managementPositions = [
+            'Executive Director',
+            'Head of Research',
+            'Head of Advocacy and Campaigns',
+            'M&E Specialist',
+            'Fundraising and Partnership Manager',
+            'Human Resource Manager'
+        ];
+
+        return in_array($this->position, $managementPositions) ||
+               $this->role === 'system_admin';
+    }
+
+    /**
+     * Check if user is in Finance department
+     */
+    public function isFinance()
+    {
+        return $this->department === 'Finance and Admin';
     }
 }

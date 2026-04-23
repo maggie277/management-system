@@ -12,6 +12,9 @@ use App\Models\DepreciationYear;
 use App\Http\Controllers\NonDepreciableAssetController;
 use App\Http\Controllers\DonorController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\InstitutionalDocumentController;
+use App\Http\Controllers\BudgetController;
 
 // Redirect root to login
 Route::redirect('/', '/login');
@@ -26,44 +29,30 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
-    // ====================
-    // DASHBOARD ROUTE
-    // ====================
+    // Dashboard
     Route::get('/dashboard', [TaskController::class, 'dashboard'])->name('dashboard');
 
-    // ====================
-    // DOCUMENT ROUTES (CORRECTED)
-    // ====================
+    // Document Routes
     Route::get('/documents-list', [DocumentController::class, 'list'])->name('documents.list');
     Route::get('/documents/category/{category}', [DocumentController::class, 'byCategory'])->name('documents.category');
     Route::get('/documents/folder/{categoryId}/{folderId}', [DocumentController::class, 'openFolder'])->name('documents.folder');
-
-    // Document CRUD routes
     Route::get('/documents/create', [DocumentController::class, 'create'])->name('documents.create');
-    Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store'); // This is the POST route
+    Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
     Route::put('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
     Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
-    // In your routes/web.php, add this route:
-Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
+    Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
 
-    // ====================
-    // FOLDER ROUTES
-    // ====================
-
+    // Folder Routes
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::get('/categories/{category}/folders/{folder}', [FolderController::class, 'show'])->name('folders.show');
 
-    // ====================
-    // ASSET ROUTES
-    // ====================
+    // Asset Routes
     Route::resource('assets', AssetController::class);
 
-    // ====================
-    // ASSET REGISTER ROUTES
-    // ====================
+    // Asset Register Routes
     Route::get('/asset-register', function(Request $request) {
         $assets = Asset::orderBy('name')->get();
         $years = DepreciationYear::getActiveYears();
@@ -72,9 +61,7 @@ Route::get('/documents', [DocumentController::class, 'index'])->name('documents.
         return view('assets.list', compact('assets', 'years', 'currentYear'));
     })->name('asset-register');
 
-    // ====================
-    // DEPRECIATION YEAR MANAGEMENT ROUTES
-    // ====================
+    // Depreciation Year Management Routes
     Route::prefix('depreciation-years')->name('depreciation-years.')->group(function () {
         Route::get('/', function() {
             $years = DepreciationYear::orderBy('position')->get();
@@ -142,31 +129,100 @@ Route::get('/documents', [DocumentController::class, 'index'])->name('documents.
         })->name('delete');
     });
 
-    // ====================
-    // ADDITIONAL ASSET ROUTES
-    // ====================
+    // Additional Asset Routes
     Route::resource('non-depreciable-assets', NonDepreciableAssetController::class);
     Route::get('/assets/category/{category}', [AssetController::class, 'byCategory'])->name('assets.category');
     Route::post('/assets/{asset}/assign', [AssetController::class, 'assign'])->name('assets.assign');
     Route::post('/assets/{asset}/maintenance', [AssetController::class, 'maintenance'])->name('assets.maintenance');
- // ====================
-    // DONOR ROUTES
-    // ====================
+
+    // Calendar Routes (FIXED - Remove the nested auth group)
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::get('/calendar/events', [CalendarController::class, 'getEvents'])->name('calendar.events');
+    Route::post('/calendar/events', [CalendarController::class, 'store'])->name('calendar.store');
+    Route::get('/calendar/events/{event}/edit', [CalendarController::class, 'edit'])->name('calendar.events.edit');
+    Route::put('/calendar/events/{event}', [CalendarController::class, 'update'])->name('calendar.events.update');
+    Route::delete('/calendar/events/{event}', [CalendarController::class, 'destroy'])->name('calendar.events.destroy');
+    Route::get('/calendar/events/{event}/delete', [CalendarController::class, 'destroy'])->name('calendar.events.delete');
+
+  // Institutional Documents Routes
+Route::prefix('institutional-documents')->name('documents.institutional.')->group(function () {
+    Route::get('/', [InstitutionalDocumentController::class, 'index'])->name('index');
+    Route::get('/create', [InstitutionalDocumentController::class, 'create'])->name('create');
+    Route::post('/', [InstitutionalDocumentController::class, 'store'])->name('store');
+    Route::get('/{id}', [InstitutionalDocumentController::class, 'show'])->name('show');
+    Route::delete('/{id}', [InstitutionalDocumentController::class, 'destroy'])->name('destroy');
+
+    // Management only routes
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/create', [InstitutionalDocumentController::class, 'create'])->name('create');
+        Route::post('/', [InstitutionalDocumentController::class, 'store'])->name('store');
+        Route::delete('/{id}', [InstitutionalDocumentController::class, 'destroy'])->name('destroy');
+    });
+
+});
+// ========= BUDGET ROUTES =========
+Route::middleware(['auth'])->group(function () {
+    Route::resource('budgets', \App\Http\Controllers\BudgetController::class);
+
+    // Additional routes
+    Route::post('/budgets/{budget}/duplicate', [\App\Http\Controllers\BudgetController::class, 'duplicate'])
+        ->name('budgets.duplicate');
+
+    Route::post('/budgets/{budget}/change-status', [\App\Http\Controllers\BudgetController::class, 'changeStatus'])
+        ->name('budgets.change-status');
+
+    Route::get('/budgets/{budget}/export-pdf', [\App\Http\Controllers\BudgetController::class, 'exportPdf'])
+        ->name('budgets.export-pdf');
+
+    Route::get('/budgets/api/statistics', [\App\Http\Controllers\BudgetController::class, 'getStatistics'])
+        ->name('budgets.api.statistics');
+
+    Route::get('/budgets/api/status-data', [\App\Http\Controllers\BudgetController::class, 'getStatusData'])
+        ->name('budgets.api.status-data');
+
+    Route::post('/budgets/search', [\App\Http\Controllers\BudgetController::class, 'search'])
+        ->name('budgets.search');
+
+    // Simple Expenses placeholder
+    Route::get('/expenses', function () {
+        return view('expenses.index');
+    })->name('expenses.index');
+});
+    // Donor Routes
     Route::get('/donors-list', [DonorController::class, 'list'])->name('donors.list');
     Route::resource('donors', DonorController::class);
     Route::get('/donors/{donor}/download-document', [DonorController::class, 'downloadDocument'])->name('donors.download-document');
     Route::post('/donors/{donor}/toggle-status', [DonorController::class, 'toggleStatus'])->name('donors.toggle-status');
 
-    // ====================
-    // TASK MANAGEMENT ROUTES
-    // ====================
+    // Task Management Routes - FIXED
     Route::resource('tasks', TaskController::class);
+    Route::post('/tasks/{task}/status-update', [TaskController::class, 'addStatusUpdate'])->name('tasks.status-update');
+    Route::post('/tasks/{task}/quick-complete', [TaskController::class, 'quickComplete'])->name('tasks.quick-complete');
     Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
     Route::put('/tasks/{task}/review', [TaskController::class, 'submitReview'])->name('tasks.submitReview');
 
-    // ====================
-    // API ROUTES FOR AJAX
-    // ====================
+    // Debug Routes
+    Route::get('/debug-init-history', function() {
+        $tasks = \App\Models\Task::whereNull('status_history')->get();
+
+        foreach ($tasks as $task) {
+            $task->update([
+                'status_history' => [
+                    [
+                        'user_type' => 'assigner',
+                        'user_id' => $task->assigned_by,
+                        'message' => 'Task created and assigned',
+                        'timestamp' => $task->created_at->toDateTimeString(),
+                        'new_status' => 'pending'
+                    ]
+                ]
+            ]);
+        }
+
+        return "Initialized history for " . $tasks->count() . " tasks";
+    });
+
+    // API Routes
     Route::prefix('api')->group(function () {
         Route::get('/assets/{asset}/depreciation/{year}', function($assetId, $year) {
             $asset = Asset::findOrFail($assetId);
@@ -182,30 +238,5 @@ Route::get('/documents', [DocumentController::class, 'index'])->name('documents.
             $years = DepreciationYear::getActiveYears();
             return response()->json($years);
         });
-    });
-
-    // ====================
-    // TEST ROUTES
-    // ====================
-    Route::get('/test-assets', function() {
-        return response()->json([
-            'total_assets' => Asset::count(),
-            'active_assets' => Asset::where('status', 'active')->count(),
-            'years_configured' => DepreciationYear::count()
-        ]);
-    });
-
-    Route::get('/test-depreciation/{assetId}', function($assetId) {
-        $asset = Asset::findOrFail($assetId);
-        $currentYear = date('Y');
-
-        return response()->json([
-            'asset' => $asset->name,
-            'cost' => $asset->cost,
-            'depreciation_rate' => $asset->depreciation_rate,
-            'annual_depreciation' => $asset->calculateAnnualDepreciation(),
-            'accumulated_depreciation' => $asset->calculateAccumulatedDepreciation($currentYear),
-            'net_book_value' => $asset->calculateNetBookValue($currentYear)
-        ]);
     });
 });

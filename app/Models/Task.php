@@ -19,12 +19,14 @@ class Task extends Model
         'due_date',
         'review',
         'rating',
-        'completed_at'
+        'completed_at',
+        'status_history' // Add this
     ];
 
     protected $casts = [
         'due_date' => 'date',
         'completed_at' => 'datetime',
+        'status_history' => 'array', // Add this line
     ];
 
     // Relationship with the user who assigned the task

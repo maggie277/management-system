@@ -68,14 +68,7 @@
                             </button>
                         </form>
 
-                        <!-- Demo Info -->
-                        <div class="mt-3 p-3 bg-light rounded">
-                            <p class="small text-muted mb-0 text-center">
-                                <strong>Demo:</strong> margret@ctpd.org.zm / password
-                            </p>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Footer -->
                 <div class="text-center mt-4">

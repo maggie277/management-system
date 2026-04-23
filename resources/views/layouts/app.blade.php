@@ -106,22 +106,103 @@
                                 </a>
                             </li>
 
-                            {{-- ========= MANAGEMENT SECTION ========= --}}
-                            @if(
-                                in_array(Auth::user()->position, [
-                                    'Executive Director',
-                                    'Head of Research',
-                                    'Head of Advocacy and Campaigns',
-                                    'M&E Specialist',
-                                    'Fundraising and Partnership Manager',
-                                    'Human Resource Manager'
-                                ]) ||
-                                Auth::user()->role === 'system_admin'
-                            )
+                            {{-- ========= CALENDAR SECTION (ACCESSIBLE TO EVERYONE) ========= --}}
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('calendar.*') ? 'active' : '' }}"
+                                   href="{{ route('calendar.index') }}">
+                                    <i class="bi bi-calendar-check me-2"></i>
+                                    Calendar
+                                </a>
+                            </li>
+
+                           {{-- ========= INSTITUTIONAL DOCUMENTS SECTION (ACCESSIBLE TO EVERYONE) ========= --}}
+                            <hr class="text-white-50">
+                            <div class="sidebar-section-title">Resources</div>
+
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('documents.institutional.*') ? 'active' : '' }}"
+                                   href="{{ route('documents.institutional.index') }}">
+                                    <i class="bi bi-folder-fill me-2"></i>
+                                    Institutional Documents
+                                </a>
+                            </li>
+
+                            {{-- ========= SYSTEM ADMIN SECTION ========= --}}
+                            @if(Auth::user()->role === 'system_admin')
+                                <hr class="text-white-50">
+                                <div class="sidebar-section-title">System Administration</div>
+
+                                {{-- Budgets for System Admin --}}
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
+                                       href="{{ route('budgets.index') }}">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        Budgets
+                                    </a>
+                                </li>
+
+                                {{-- Expenses for System Admin --}}
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}"
+                                       href="{{ route('expenses.index') }}">
+                                        <i class="bi bi-wallet2 me-2"></i>
+                                        Expenses
+                                    </a>
+                                </li>
+
+
+
+                                {{-- All Documents for System Admin --}}
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('documents.*') ? 'active' : '' }}"
+                                       href="{{ route('documents.index') }}">
+                                        <i class="bi bi-folder me-2"></i>
+                                        All Documents
+                                    </a>
+                                </li>
+
+                                {{-- Assets for System Admin --}}
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('assets.*') ? 'active' : '' }}"
+                                       href="{{ route('assets.index') }}">
+                                        <i class="bi bi-box-seam me-2"></i>
+                                        Assets
+                                    </a>
+                                </li>
+
+                                {{-- Donors for System Admin --}}
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"
+                                       href="{{ route('donors.index') }}">
+                                        <i class="bi bi-cash-coin me-2"></i>
+                                        Donors
+                                    </a>
+                                </li>
+
+                                {{-- Optional: User Management for System Admin --}}
+                                {{--
+                                <li class="nav-item">
+                                    <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}"
+                                       href="{{ route('users.index') }}">
+                                        <i class="bi bi-people me-2"></i>
+                                        User Management
+                                    </a>
+                                </li>
+                                --}}
+
+                            {{-- ========= MANAGEMENT SECTION (for non-system_admin management) ========= --}}
+                            @elseif(in_array(Auth::user()->position, [
+                                'Executive Director',
+                                'Head of Research',
+                                'Head of Advocacy and Campaigns',
+                                'M&E Specialist',
+                                'Fundraising and Partnership Manager',
+                                'Human Resource Manager'
+                            ]))
                                 <hr class="text-white-50">
                                 <div class="sidebar-section-title">Management</div>
 
-                                {{-- Documents - HR/Management only --}}
+                                {{-- Documents - Management only --}}
                                 <li class="nav-item">
                                     <a class="nav-link {{ request()->routeIs('documents.*') ? 'active' : '' }}"
                                        href="{{ route('documents.index') }}">
@@ -130,11 +211,12 @@
                                     </a>
                                 </li>
 
-                                {{-- Assets & Donors visible for HR & Finance --}}
+                                {{-- Assets & Donors visible for HR & specific positions --}}
                                 @if(
                                     Auth::user()->department === 'Finance and Admin' ||
                                     Auth::user()->position === 'Human Resource Manager' ||
-                                    Auth::user()->role === 'system_admin'
+                                    Auth::user()->position === 'Executive Director' ||
+                                    Auth::user()->position === 'Fundraising and Partnership Manager'
                                 )
                                     <li class="nav-item">
                                         <a class="nav-link {{ request()->routeIs('assets.*') ? 'active' : '' }}"
@@ -153,34 +235,43 @@
                                         </a>
                                     </li>
                                 @endif
+
+                                {{-- Budgets for Executive Director and Fundraising Manager --}}
+                                @if(Auth::user()->position === 'Executive Director' ||
+                                    Auth::user()->position === 'Fundraising and Partnership Manager')
+                                    <li class="nav-item">
+                                        <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
+                                           href="{{ route('budgets.index') }}">
+                                            <i class="bi bi-cash-coin me-2"></i>
+                                            Budgets
+                                        </a>
+                                    </li>
+                                @endif
                             @endif
 
                             {{-- ========= FINANCE SECTION ========= --}}
-                            @if(Auth::user()->department === 'Finance and Admin')
+                            @if(Auth::user()->department === 'Finance and Admin' && Auth::user()->role !== 'system_admin')
                                 <hr class="text-white-50">
                                 <div class="sidebar-section-title">Finance & Admin</div>
 
-                                {{-- Finance-specific non-clickable items --}}
+                                {{-- Finance-specific items (make them clickable) --}}
                                 <li class="nav-item">
-                                    <span class="nav-link disabled">
+                                    <a class="nav-link {{ request()->routeIs('budgets.*') ? 'active' : '' }}"
+                                       href="{{ route('budgets.index') }}">
                                         <i class="bi bi-cash-coin me-2"></i>
                                         Budgets
-                                    </span>
+                                    </a>
                                 </li>
 
                                 <li class="nav-item">
-                                    <span class="nav-link disabled">
+                                    <a class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}"
+                                       href="{{ route('expenses.index') }}">
                                         <i class="bi bi-wallet2 me-2"></i>
                                         Expenses
-                                    </span>
+                                    </a>
                                 </li>
 
-                                <li class="nav-item">
-                                    <span class="nav-link disabled">
-                                        <i class="bi bi-person-vcard me-2"></i>
-                                        Staff Payroll
-                                    </span>
-                                </li>
+
 
                                 {{-- Assets & Donors also visible for Finance --}}
                                 <li class="nav-item">
@@ -201,34 +292,9 @@
                                 </li>
                             @endif
 
-                            {{-- ========= ALWAYS VISIBLE DONORS LINK ========= --}}
-                            {{-- If the above conditions don't work, uncomment this section --}}
-                            {{--
-                            @if(!request()->routeIs('donors.*') &&
-                                Auth::user()->department !== 'Finance and Admin' &&
-                                !in_array(Auth::user()->position, [
-                                    'Executive Director',
-                                    'Head of Research',
-                                    'Head of Advocacy and Campaigns',
-                                    'M&E Specialist',
-                                    'Fundraising and Partnership Manager',
-                                    'Human Resource Manager'
-                                ]))
-                                <hr class="text-white-50">
-                                <div class="sidebar-section-title">Tools</div>
-
-                                <li class="nav-item">
-                                    <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"
-                                       href="{{ route('donors.index') }}">
-                                        <i class="bi bi-cash-coin me-2"></i>
-                                        Donors
-                                    </a>
-                                </li>
-                            @endif
-                            --}}
-
                             {{-- ========= OTHER DEPARTMENTS ========= --}}
                             @if(
+                                Auth::user()->role !== 'system_admin' &&
                                 !in_array(Auth::user()->department, ['Finance and Admin']) &&
                                 !in_array(Auth::user()->position, [
                                     'Executive Director',
@@ -237,8 +303,7 @@
                                     'M&E Specialist',
                                     'Fundraising and Partnership Manager',
                                     'Human Resource Manager'
-                                ]) &&
-                                Auth::user()->role !== 'system_admin'
+                                ])
                             )
                                 <hr class="text-white-50">
                                 <div class="sidebar-section-title">Department</div>
@@ -250,7 +315,7 @@
                                     </span>
                                 </li>
 
-                                {{-- Optional: Add Donors link for other departments --}}
+                                {{-- Optional: Add Donors link for other departments if needed --}}
                                 {{--
                                 <li class="nav-item">
                                     <a class="nav-link {{ request()->routeIs('donors.*') ? 'active' : '' }}"

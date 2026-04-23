@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Models\CalendarEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
@@ -17,11 +19,15 @@ class TaskController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view('tasks.index', compact('tasks'));
+        $users = User::where('id', '!=', Auth::id())->get();
+
+        return view('tasks.index', compact('tasks', 'users'));
     }
 
     public function dashboard()
     {
+        $user = Auth::user();
+
         // Task statistics
         $taskStats = [
             'total' => Task::where('assigned_to', Auth::id())->count(),
@@ -30,26 +36,38 @@ class TaskController extends Controller
             'review' => Task::where('assigned_to', Auth::id())->where('status', 'review')->count(),
         ];
 
-        // Tasks assigned to current user
-        $myTasks = Task::with('assigner')
+        // Pending tasks assigned to current user (not completed)
+        $pendingTasks = Task::with('assigner')
             ->where('assigned_to', Auth::id())
-            ->whereIn('status', ['pending', 'in_progress'])
+            ->where('status', '!=', 'completed')
             ->latest()
-            ->take(5)
             ->get();
 
-        // Tasks assigned by current user
-        $assignedTasks = Task::with('assignee')
-            ->where('assigned_by', Auth::id())
-            ->whereIn('status', ['pending', 'in_progress', 'review'])
-            ->latest()
-            ->take(5)
+        // Get today's meetings
+        $todayMeetings = CalendarEvent::where('user_id', $user->id)
+            ->whereDate('start', today())
+            ->orderBy('start', 'asc')
+            ->get();
+
+        // Get upcoming meetings (next 7 days)
+        $upcomingMeetings = CalendarEvent::where('user_id', $user->id)
+            ->where('start', '>', now())
+            ->where('start', '<=', now()->addDays(7))
+            ->whereDate('start', '!=', today()) // Exclude today's meetings
+            ->orderBy('start', 'asc')
             ->get();
 
         // All users for assigning tasks
         $users = User::where('id', '!=', Auth::id())->get();
 
-        return view('dashboard', compact('taskStats', 'myTasks', 'assignedTasks', 'users'));
+        return view('dashboard', compact(
+            'taskStats',
+            'pendingTasks',
+            'users',
+            'todayMeetings',
+            'upcomingMeetings',
+            'user'
+        ));
     }
 
     public function store(Request $request)
@@ -69,6 +87,16 @@ class TaskController extends Controller
             'assigned_to' => $request->assigned_to,
             'priority' => $request->priority,
             'due_date' => $request->due_date,
+            'status' => 'pending',
+            'status_history' => [
+                [
+                    'user_type' => 'assigner',
+                    'user_id' => Auth::id(),
+                    'message' => 'Task created and assigned',
+                    'timestamp' => now()->toDateTimeString(),
+                    'new_status' => 'pending'
+                ]
+            ]
         ]);
 
         return redirect()->back()->with('success', 'Task assigned successfully!');
@@ -86,7 +114,6 @@ class TaskController extends Controller
             'status' => 'required|in:pending,in_progress,completed,review'
         ]);
 
-        // Check if user is authorized to update this task
         if ($task->assigned_to !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -99,36 +126,107 @@ class TaskController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function submitReview(Request $request, Task $task)
-    {
-        $request->validate([
-            'rating' => 'required|integer|between:1,5',
-            'review' => 'required|string'
-        ]);
-
-        // Check if user is the assigner of this task
-        if ($task->assigned_by !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $task->update([
-            'rating' => $request->rating,
-            'review' => $request->review,
-            'status' => 'completed'
-        ]);
-
-        return redirect()->back()->with('success', 'Review submitted successfully!');
-    }
-
     public function destroy(Task $task)
     {
-        // Only the assigner can delete the task
         if ($task->assigned_by !== Auth::id()) {
             return redirect()->back()->with('error', 'Unauthorized to delete this task.');
         }
 
         $task->delete();
-
         return redirect()->back()->with('success', 'Task deleted successfully!');
+    }
+
+    public function addStatusUpdate(Request $request, Task $task)
+    {
+        Log::info('=== STATUS UPDATE START ===');
+        Log::info('Task ID: ' . $task->id);
+        Log::info('User ID: ' . Auth::id());
+        Log::info('Request data:', $request->all());
+
+        $request->validate([
+            'message' => 'required|string|max:1000',
+            'new_status' => 'nullable|in:pending,in_progress,review,completed'
+        ]);
+
+        // Check if user is either assigner or assignee
+        if ($task->assigned_to !== Auth::id() && $task->assigned_by !== Auth::id()) {
+            Log::warning('Unauthorized access attempt');
+            return redirect()->back()->with('error', 'Unauthorized to update this task.');
+        }
+
+        // Determine user type
+        $userType = $task->assigned_by === Auth::id() ? 'assigner' : 'assignee';
+        Log::info('User type: ' . $userType);
+
+        // Get current status history or initialize empty array
+        $statusHistory = $task->status_history ?? [];
+        Log::info('Current history count: ' . count($statusHistory));
+
+        // Add new status update
+        $newEntry = [
+            'user_type' => $userType,
+            'user_id' => Auth::id(),
+            'message' => $request->message,
+            'timestamp' => now()->toDateTimeString(),
+            'new_status' => $request->new_status
+        ];
+
+        $statusHistory[] = $newEntry;
+        Log::info('New entry added:', $newEntry);
+
+        // Update task
+        $updateData = ['status_history' => $statusHistory];
+
+        if ($request->new_status) {
+            $updateData['status'] = $request->new_status;
+            Log::info('Updating status to: ' . $request->new_status);
+
+            if ($request->new_status === 'completed') {
+                $updateData['completed_at'] = now();
+                Log::info('Setting completed_at timestamp');
+            }
+        }
+
+        Log::info('Final update data:', $updateData);
+
+        try {
+            $task->update($updateData);
+            Log::info('Task updated successfully');
+            Log::info('=== STATUS UPDATE END ===');
+
+            return redirect()->route('tasks.index')->with('success', 'Status update added successfully!');
+        } catch (\Exception $e) {
+            Log::error('Error updating task: ' . $e->getMessage());
+            Log::info('=== STATUS UPDATE FAILED ===');
+            return redirect()->back()->with('error', 'Error updating task: ' . $e->getMessage());
+        }
+    }
+
+    public function quickComplete(Task $task)
+    {
+        Log::info('Quick complete for task: ' . $task->id);
+
+        if ($task->assigned_to !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $statusHistory = $task->status_history ?? [];
+
+        $statusHistory[] = [
+            'user_type' => 'assignee',
+            'user_id' => Auth::id(),
+            'message' => 'Task marked as completed',
+            'timestamp' => now()->toDateTimeString(),
+            'new_status' => 'completed'
+        ];
+
+        $task->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'status_history' => $statusHistory
+        ]);
+
+        Log::info('Quick complete successful');
+        return response()->json(['success' => true]);
     }
 }
