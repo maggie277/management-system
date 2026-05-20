@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Donor;
 use App\Models\Document;
 use App\Models\Category;
+use App\Models\Consultant; // Fixed: Changed from Illuminate\Model\Consultant to App\Models\Consultant
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -12,64 +13,75 @@ use Illuminate\Support\Facades\Log;
 
 class DonorController extends Controller
 {
-   public function index(Request $request)
-{
-    // Get all donors for statistics (no pagination needed for stats)
-    $donors = Donor::query();
+    public function index(Request $request)
+    {
+        // Get all donors for statistics (no pagination needed for stats)
+        $donors = Donor::query();
 
-    // Apply search filter if needed for stats
-    if (!empty($request->search)) {
-        $donors->where(function($q) use ($request) {
-            $q->where('name', 'like', '%' . $request->search . '%')
-              ->orWhere('email', 'like', '%' . $request->search . '%')
-              ->orWhere('contact_number', 'like', '%' . $request->search . '%')
-              ->orWhere('responsible_person', 'like', '%' . $request->search . '%');
-        });
+        // Apply search filter if needed for stats
+        if (!empty($request->search)) {
+            $donors->where(function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('email', 'like', '%' . $request->search . '%')
+                  ->orWhere('contact_number', 'like', '%' . $request->search . '%')
+                  ->orWhere('responsible_person', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $allDonors = $donors->get();
+
+        // Calculate statistics
+        $stats = [
+            'totalDonors' => $allDonors->count(),
+            'activeDonors' => $allDonors->where('is_active', true)->count(),
+            'totalBudget' => $allDonors->sum('total_budget'),
+            'activeContracts' => $allDonors->filter(function($donor) {
+                return $donor->contract_end_date >= now();
+            })->count(),
+        ];
+
+        // Consultants data
+        $totalConsultants = Consultant::count();
+        $consultantsBudget = Consultant::sum('budget');
+        $activeConsultants = Consultant::where('status', 'active')->count();
+
+        // Merge stats with consultants data
+        $data = array_merge($stats, [
+            'totalConsultants' => $totalConsultants,
+            'consultantsBudget' => $consultantsBudget,
+            'activeConsultants' => $activeConsultants,
+        ]);
+
+        return view('donors.index', $data);
     }
-
-    $allDonors = $donors->get();
-
-    // Calculate statistics
-    $stats = [
-        'totalDonors' => $allDonors->count(),
-        'activeDonors' => $allDonors->where('is_active', true)->count(),
-        'totalBudget' => $allDonors->sum('total_budget'),
-        'activeContracts' => $allDonors->filter(function($donor) {
-            return $donor->contract_end_date >= now();
-        })->count(),
-    ];
-
-    return view('donors.index', $stats);
-}
-
 
     // Add this method to your DonorController
-public function list(Request $request)
-{
-    // Get filter parameters
-    $search = $request->get('search', '');
+    public function list(Request $request)
+    {
+        // Get filter parameters
+        $search = $request->get('search', '');
 
-    // Start query - soft deleted donors are automatically excluded
-    $query = Donor::query();
+        // Start query - soft deleted donors are automatically excluded
+        $query = Donor::query();
 
-    // Apply search filter
-    if (!empty($search)) {
-        $query->where(function($q) use ($search) {
-            $q->where('name', 'like', '%' . $search . '%')
-              ->orWhere('email', 'like', '%' . $search . '%')
-              ->orWhere('contact_number', 'like', '%' . $search . '%')
-              ->orWhere('responsible_person', 'like', '%' . $search . '%');
-        });
+        // Apply search filter
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('contact_number', 'like', '%' . $search . '%')
+                  ->orWhere('responsible_person', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Get paginated results
+        $donors = $query->orderBy('name')->paginate(12);
+
+        return view('donors.list', [
+            'donors' => $donors,
+            'search' => $search,
+        ]);
     }
-
-    // Get paginated results
-    $donors = $query->orderBy('name')->paginate(12);
-
-    return view('donors.list', [
-        'donors' => $donors,
-        'search' => $search,
-    ]);
-}
 
     public function create()
     {

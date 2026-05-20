@@ -130,14 +130,6 @@
 .table-responsive {
     border-radius: 0 0 0.5rem 0.5rem;
 }
-.pagination {
-    font-size: 0.8rem;
-    margin: 0;
-}
-.page-link {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
-}
 .breadcrumb-item a {
     text-decoration: none;
     color: #198754;
@@ -341,10 +333,10 @@
                             {{-- Display Subfolders --}}
                             @foreach($subfolders as $folder)
                                 <tr class="folder-row" onclick="window.location='{{ route('folders.show', ['category' => $currentCategory ? $currentCategory->id : $folder->category_id, 'folder' => $folder]) }}'">
-                                    <td>
+                                    <td class="align-middle">
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-folder-fill text-warning me-2" style="font-size: 0.9rem;"></i>
-                                            <div>
+                                            <i class="bi bi-folder-fill text-warning me-2" style="font-size: 0.9rem; flex-shrink: 0;"></i>
+                                            <div class="folder-info">
                                                 <strong style="font-size: 0.8rem;">{{ $folder->name }}</strong>
                                                 @if($folder->description)
                                                     <br><small class="text-muted" style="font-size: 0.7rem;">{{ Str::limit($folder->description, 40) }}</small>
@@ -352,12 +344,12 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <span class="badge compact-badge bg-warning text-dark">
                                             <i class="bi bi-folder me-1"></i>Folder
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         @if($folder->category)
                                             <span class="badge compact-badge badge-success">
                                                 {{ $folder->category->name }}
@@ -366,7 +358,7 @@
                                             <span class="text-muted" style="font-size: 0.8rem;">—</span>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <small class="text-muted" style="font-size: 0.75rem;">
                                             {{ $folder->documents_count }} docs
                                             @if($folder->children_count > 0)
@@ -374,10 +366,10 @@
                                             @endif
                                         </small>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <small class="text-muted" style="font-size: 0.75rem;">{{ $folder->updated_at->format('M j, Y') }}</small>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <div class="btn-group btn-group-sm" onclick="event.stopPropagation()">
                                             @if($currentCategory)
                                                 <a href="{{ route('folders.show', ['category' => $currentCategory, 'folder' => $folder]) }}"
@@ -406,10 +398,10 @@
                             {{-- Display Documents --}}
                             @foreach($documents as $document)
                                 <tr>
-                                    <td>
+                                    <td class="align-middle">
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-file-earmark-text text-success me-2" style="font-size: 0.9rem;"></i>
-                                            <div>
+                                            <i class="bi bi-file-earmark-text text-success me-2" style="font-size: 0.9rem; flex-shrink: 0;"></i>
+                                            <div class="document-info">
                                                 <strong style="font-size: 0.8rem; color: #198754;">
                                                     {{ $document->title }}
                                                 </strong>
@@ -421,12 +413,12 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <span class="badge file-type-badge bg-secondary">
                                             {{ strtoupper(pathinfo($document->file_path, PATHINFO_EXTENSION)) }}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         @if($document->category_id && $document->documentCategory)
                                             <span class="badge compact-badge badge-success">
                                                 {{ $document->documentCategory->name }}
@@ -435,13 +427,13 @@
                                             <span class="badge compact-badge bg-secondary">Uncategorized</span>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <small class="text-muted" style="font-size: 0.8rem;">—</small>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <small class="text-muted" style="font-size: 0.75rem;">{{ $document->created_at->format('M j, Y') }}</small>
                                     </td>
-                                    <td>
+                                    <td class="align-middle">
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ route('documents.show', $document) }}" class="btn btn-outline-success" title="View">
                                                 <i class="bi bi-eye"></i>
@@ -460,19 +452,8 @@
                     </table>
                 </div>
 
-                {{-- Pagination --}}
-                @if($documents->hasPages())
-                <div class="card-footer bg-white border-top-0">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="text-muted small">
-                            Showing {{ $documents->firstItem() }} to {{ $documents->lastItem() }} of {{ $documents->total() }} documents
-                        </div>
-                        <div>
-                            {{ $documents->links() }}
-                        </div>
-                    </div>
-                </div>
-                @endif
+                {{-- PAGINATION REMOVED --}}
+
             @else
                 <div class="text-center py-4">
                     <i class="bi bi-folder-x text-muted mb-2" style="font-size: 2rem;"></i>
@@ -500,7 +481,7 @@
     </div>
 </div>
 
-<!-- Create Folder Modal - SIMPLE REGULAR FORM VERSION -->
+<!-- Create Folder Modal -->
 <div class="modal fade" id="createFolderModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -520,14 +501,12 @@
             <form action="{{ route('folders.store') }}" method="POST" id="createFolderForm">
                 @csrf
                 <div class="modal-body">
-                    {{-- Set category_id based on current context --}}
                     @if(isset($currentFolder))
                         <input type="hidden" name="category_id" value="{{ $currentFolder->category_id }}">
                         <input type="hidden" name="parent_id" value="{{ $currentFolder->id }}">
                     @elseif(isset($currentCategory))
                         <input type="hidden" name="category_id" value="{{ $currentCategory->id }}">
                     @else
-                        {{-- If no category context, show category selection --}}
                         <div class="mb-3">
                             <label class="form-label" style="font-size: 0.875rem;">Category <span class="text-danger">*</span></label>
                             <select name="category_id" class="form-select form-select-sm" required>
@@ -561,9 +540,7 @@
 
 @section('scripts')
 <script>
-// Simple script - just make folder rows clickable
 document.addEventListener('DOMContentLoaded', function() {
-    // Make folder rows clickable
     document.querySelectorAll('.folder-row').forEach(row => {
         row.style.cursor = 'pointer';
         row.addEventListener('click', function() {

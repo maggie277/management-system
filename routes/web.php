@@ -15,6 +15,12 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\InstitutionalDocumentController;
 use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\ConsultantController;
+
+
 
 // Redirect root to login
 Route::redirect('/', '/login');
@@ -23,16 +29,37 @@ Route::redirect('/', '/login');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
+// ========= ADD THESE PASSWORD RESET ROUTES =========
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])
+        ->name('password.request');
+
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])
+        ->name('password.email');
+
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])
+        ->name('password.reset');
+
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
+        ->name('password.update');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
+    // ... your existing protected routes ...
+
+});
+
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Protected Routes
+Route::middleware(['auth'])->group(function () {
+
     // Dashboard
     Route::get('/dashboard', [TaskController::class, 'dashboard'])->name('dashboard');
 
-    // Document Routes
+    // ========= DOCUMENT ROUTES =========
     Route::get('/documents-list', [DocumentController::class, 'list'])->name('documents.list');
     Route::get('/documents/category/{category}', [DocumentController::class, 'byCategory'])->name('documents.category');
     Route::get('/documents/folder/{categoryId}/{folderId}', [DocumentController::class, 'openFolder'])->name('documents.folder');
@@ -49,15 +76,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::get('/categories/{category}/folders/{folder}', [FolderController::class, 'show'])->name('folders.show');
 
-    // Asset Routes
+    // ========= ASSET ROUTES =========
     Route::resource('assets', AssetController::class);
-
-    // Asset Register Routes
     Route::get('/asset-register', function(Request $request) {
         $assets = Asset::orderBy('name')->get();
         $years = DepreciationYear::getActiveYears();
         $currentYear = date('Y');
-
         return view('assets.list', compact('assets', 'years', 'currentYear'));
     })->name('asset-register');
 
@@ -73,7 +97,6 @@ Route::middleware(['auth'])->group(function () {
                 'year' => 'required|integer|min:2011|max:2100',
                 'position' => 'nullable|integer|min:1'
             ]);
-
             try {
                 DepreciationYear::addYear($request->year, $request->position);
                 return redirect()->route('depreciation-years.index')
@@ -85,30 +108,23 @@ Route::middleware(['auth'])->group(function () {
         })->name('add');
 
         Route::post('/reorder', function(Request $request) {
-            $request->validate([
-                'years' => 'required|array'
-            ]);
-
+            $request->validate(['years' => 'required|array']);
             DepreciationYear::updatePositions($request->years);
-
             return response()->json(['success' => true]);
         })->name('reorder');
 
         Route::post('/{id}/update-style', function(Request $request, $id) {
             $year = DepreciationYear::findOrFail($id);
-
             $year->update([
                 'background_color' => $request->background_color,
                 'text_color' => $request->text_color
             ]);
-
             return response()->json(['success' => true]);
         })->name('update-style');
 
         Route::post('/{id}/toggle', function($id) {
             $year = DepreciationYear::findOrFail($id);
             $year->update(['is_active' => !$year->is_active]);
-
             $action = $year->is_active ? 'enabled' : 'disabled';
             return redirect()->route('depreciation-years.index')
                 ->with('success', "Year {$year->year} column {$action}");
@@ -118,24 +134,21 @@ Route::middleware(['auth'])->group(function () {
             $year = DepreciationYear::findOrFail($id);
             $deletedYear = $year->year;
             $year->delete();
-
             $years = DepreciationYear::orderBy('position')->get();
             foreach ($years as $index => $year) {
                 $year->update(['position' => $index + 1]);
             }
-
             return redirect()->route('depreciation-years.index')
                 ->with('success', "Year {$deletedYear} column deleted");
         })->name('delete');
     });
 
-    // Additional Asset Routes
     Route::resource('non-depreciable-assets', NonDepreciableAssetController::class);
     Route::get('/assets/category/{category}', [AssetController::class, 'byCategory'])->name('assets.category');
     Route::post('/assets/{asset}/assign', [AssetController::class, 'assign'])->name('assets.assign');
     Route::post('/assets/{asset}/maintenance', [AssetController::class, 'maintenance'])->name('assets.maintenance');
 
-    // Calendar Routes (FIXED - Remove the nested auth group)
+    // ========= CALENDAR ROUTES =========
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::get('/calendar/events', [CalendarController::class, 'getEvents'])->name('calendar.events');
     Route::post('/calendar/events', [CalendarController::class, 'store'])->name('calendar.store');
@@ -144,67 +157,59 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/calendar/events/{event}', [CalendarController::class, 'destroy'])->name('calendar.events.destroy');
     Route::get('/calendar/events/{event}/delete', [CalendarController::class, 'destroy'])->name('calendar.events.delete');
 
-  // Institutional Documents Routes
-Route::prefix('institutional-documents')->name('documents.institutional.')->group(function () {
-    Route::get('/', [InstitutionalDocumentController::class, 'index'])->name('index');
-    Route::get('/create', [InstitutionalDocumentController::class, 'create'])->name('create');
-    Route::post('/', [InstitutionalDocumentController::class, 'store'])->name('store');
-    Route::get('/{id}', [InstitutionalDocumentController::class, 'show'])->name('show');
-    Route::delete('/{id}', [InstitutionalDocumentController::class, 'destroy'])->name('destroy');
-
-    // Management only routes
-    Route::middleware(['auth'])->group(function () {
+    // ========= INSTITUTIONAL DOCUMENTS =========
+    Route::prefix('institutional-documents')->name('documents.institutional.')->group(function () {
+        Route::get('/', [InstitutionalDocumentController::class, 'index'])->name('index');
         Route::get('/create', [InstitutionalDocumentController::class, 'create'])->name('create');
         Route::post('/', [InstitutionalDocumentController::class, 'store'])->name('store');
+        Route::get('/{id}', [InstitutionalDocumentController::class, 'show'])->name('show');
         Route::delete('/{id}', [InstitutionalDocumentController::class, 'destroy'])->name('destroy');
     });
 
+// Weekly Task Planning Routes
+Route::prefix('weekly-plans')->name('weekly-plans.')->group(function () {
+    Route::post('/', [TaskController::class, 'storeWeeklyPlan'])->name('store');
+    Route::post('/{weeklyPlan}', [TaskController::class, 'updateWeeklyPlan'])->name('update');
+    Route::get('/user/{userId?}', [TaskController::class, 'getWeeklyPlan'])->name('get');
+    Route::get('/all', [TaskController::class, 'getAllWeeklyPlans'])->name('all');
 });
-// ========= BUDGET ROUTES =========
-Route::middleware(['auth'])->group(function () {
-    Route::resource('budgets', \App\Http\Controllers\BudgetController::class);
 
-    // Additional routes
-    Route::post('/budgets/{budget}/duplicate', [\App\Http\Controllers\BudgetController::class, 'duplicate'])
-        ->name('budgets.duplicate');
+    // ========= BUDGET ROUTES =========
+    Route::resource('budgets', BudgetController::class);
+    Route::post('/budgets/{budget}/duplicate', [BudgetController::class, 'duplicate'])->name('budgets.duplicate');
+    Route::post('/budgets/{budget}/change-status', [BudgetController::class, 'changeStatus'])->name('budgets.change-status');
+    Route::get('/budgets/{budget}/export-pdf', [BudgetController::class, 'exportPdf'])->name('budgets.export-pdf');
+    Route::get('/budgets/api/statistics', [BudgetController::class, 'getStatistics'])->name('budgets.api.statistics');
+    Route::get('/budgets/api/status-data', [BudgetController::class, 'getStatusData'])->name('budgets.api.status-data');
+    Route::post('/budgets/search', [BudgetController::class, 'search'])->name('budgets.search');
 
-    Route::post('/budgets/{budget}/change-status', [\App\Http\Controllers\BudgetController::class, 'changeStatus'])
-        ->name('budgets.change-status');
+    // ========= EXPENSE ROUTES =========
+    Route::resource('expenses', ExpenseController::class);
+    Route::post('expenses/{expense}/approve', [ExpenseController::class, 'approve'])->name('expenses.approve');
+    Route::post('expenses/{expense}/reject', [ExpenseController::class, 'reject'])->name('expenses.reject');
+    Route::post('expenses/{expense}/mark-paid', [ExpenseController::class, 'markAsPaid'])->name('expenses.mark-paid');
 
-    Route::get('/budgets/{budget}/export-pdf', [\App\Http\Controllers\BudgetController::class, 'exportPdf'])
-        ->name('budgets.export-pdf');
+    // Expense API Routes
+    Route::get('/api/budget-items/{budget}', [ExpenseController::class, 'getBudgetItems'])->name('api.budget-items');
+    Route::get('/api/budget-remaining/{budget}', [ExpenseController::class, 'getBudgetRemaining'])->name('api.budget-remaining');
 
-    Route::get('/budgets/api/statistics', [\App\Http\Controllers\BudgetController::class, 'getStatistics'])
-        ->name('budgets.api.statistics');
-
-    Route::get('/budgets/api/status-data', [\App\Http\Controllers\BudgetController::class, 'getStatusData'])
-        ->name('budgets.api.status-data');
-
-    Route::post('/budgets/search', [\App\Http\Controllers\BudgetController::class, 'search'])
-        ->name('budgets.search');
-
-    // Simple Expenses placeholder
-    Route::get('/expenses', function () {
-        return view('expenses.index');
-    })->name('expenses.index');
-});
-    // Donor Routes
+    // ========= DONOR ROUTES =========
     Route::get('/donors-list', [DonorController::class, 'list'])->name('donors.list');
     Route::resource('donors', DonorController::class);
     Route::get('/donors/{donor}/download-document', [DonorController::class, 'downloadDocument'])->name('donors.download-document');
     Route::post('/donors/{donor}/toggle-status', [DonorController::class, 'toggleStatus'])->name('donors.toggle-status');
-
-    // Task Management Routes - FIXED
+    Route::resource('consultants', ConsultantController::class);
+    Route::get('consultants/{consultant}/toggle-status', [ConsultantController::class, 'toggleStatus'])->name('consultants.toggle-status');
+    // ========= TASK ROUTES =========
     Route::resource('tasks', TaskController::class);
     Route::post('/tasks/{task}/status-update', [TaskController::class, 'addStatusUpdate'])->name('tasks.status-update');
     Route::post('/tasks/{task}/quick-complete', [TaskController::class, 'quickComplete'])->name('tasks.quick-complete');
     Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
     Route::put('/tasks/{task}/review', [TaskController::class, 'submitReview'])->name('tasks.submitReview');
 
-    // Debug Routes
+    // ========= DEBUG ROUTES =========
     Route::get('/debug-init-history', function() {
         $tasks = \App\Models\Task::whereNull('status_history')->get();
-
         foreach ($tasks as $task) {
             $task->update([
                 'status_history' => [
@@ -218,25 +223,23 @@ Route::middleware(['auth'])->group(function () {
                 ]
             ]);
         }
-
         return "Initialized history for " . $tasks->count() . " tasks";
     });
 
-    // API Routes
+    // ========= API ROUTES =========
     Route::prefix('api')->group(function () {
         Route::get('/assets/{asset}/depreciation/{year}', function($assetId, $year) {
             $asset = Asset::findOrFail($assetId);
-
             return response()->json([
                 'annual_depreciation' => $asset->getDepreciationForYear($year),
                 'accumulated_depreciation' => $asset->calculateAccumulatedDepreciation($year),
                 'net_book_value' => $asset->calculateNetBookValue($year)
             ]);
         });
-
         Route::get('/depreciation-years', function() {
             $years = DepreciationYear::getActiveYears();
             return response()->json($years);
         });
     });
+
 });

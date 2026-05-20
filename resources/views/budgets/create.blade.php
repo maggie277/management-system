@@ -1,287 +1,334 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Create New Detailed Budget</h1>
-        <a href="{{ route('budgets.index') }}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+<div class="container-fluid px-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h4 class="mb-1" style="color: #000; font-weight: 600;">New Budget</h4>
+            <p class="text-muted small mb-0">Create a detailed project budget</p>
+        </div>
+        <a href="{{ route('budgets.index') }}" class="btn btn-outline-dark btn-sm" style="border-radius: 20px;">
+            <i class="bi bi-arrow-left me-1"></i> Back
         </a>
     </div>
+
+    @if ($errors->any())
+    <div class="alert alert-danger border-0 shadow-sm" style="border-radius: 8px; font-size: 0.85rem;">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
 
     <form action="{{ route('budgets.store') }}" method="POST" id="budgetForm">
         @csrf
 
-        <!-- Basic Budget Information Card -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-primary text-white py-3">
-                <h6 class="m-0 font-weight-bold">Basic Budget Information</h6>
+        <!-- Basic Information -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3" style="border-radius: 8px 8px 0 0;">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Basic Information</h6>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="project_title" class="form-label">Project Title *</label>
-                        <input type="text" class="form-control" id="project_title" name="project_title"
-                               value="{{ old('project_title') }}" placeholder="Enter project title" required>
+            <div class="card-body pt-0">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold" style="color: #333;">Project Title *</label>
+                        <input type="text" class="form-control form-control-sm @error('project_title') is-invalid @enderror"
+                               name="project_title" value="{{ old('project_title') }}" placeholder="Enter project title"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
+                        @error('project_title')<div class="invalid-feedback small">{{ $message }}</div>@enderror
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="project_code" class="form-label">Project Code *</label>
-                        <input type="text" class="form-control" id="project_code" name="project_code"
-                               value="{{ old('project_code') }}" placeholder="e.g., TC-ZM-2024-001" required>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold" style="color: #333;">Project Code *</label>
+                        <input type="text" class="form-control form-control-sm @error('project_code') is-invalid @enderror"
+                               name="project_code" value="{{ old('project_code') }}" placeholder="e.g., TC-ZM-2024-001"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
+                        @error('project_code')<div class="invalid-feedback small">{{ $message }}</div>@enderror
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <label for="project_goal" class="form-label">Project Goal/Objective *</label>
-                        <textarea class="form-control" id="project_goal" name="project_goal" rows="3"
-                                  placeholder="Enter project goal/objective" required>{{ old('project_goal') }}</textarea>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold" style="color: #333;">Project Goal/Objective *</label>
+                        <textarea class="form-control form-control-sm @error('project_goal') is-invalid @enderror"
+                                  name="project_goal" rows="2" placeholder="Enter project goal/objective"
+                                  style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">{{ old('project_goal') }}</textarea>
+                        @error('project_goal')<div class="invalid-feedback small">{{ $message }}</div>@enderror
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-3 mb-3">
-                        <label for="duration" class="form-label">Duration *</label>
-                        <input type="text" class="form-control" id="duration" name="duration"
-                               value="{{ old('duration') }}" placeholder="e.g., 18 Months (2024-2025)" required>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Duration *</label>
+                        <input type="text" class="form-control form-control-sm @error('duration') is-invalid @enderror"
+                               name="duration" value="{{ old('duration') }}" placeholder="e.g., 18 Months"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="exchange_rate" class="form-label">Exchange Rate (1 USD = ZMW) *</label>
-                        <input type="number" class="form-control" id="exchange_rate" name="exchange_rate"
-                               step="0.01" value="{{ old('exchange_rate', 25.00) }}" required onchange="updateAllUSDAmounts()">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Exchange Rate (to ZMW) *</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="border-radius: 6px 0 0 6px; background: #f8f8f8; border: 1px solid #ddd; font-size: 0.75rem;">1 USD/EUR/GBP =</span>
+                            <input type="number" class="form-control form-control-sm @error('exchange_rate') is-invalid @enderror"
+                                   name="exchange_rate" id="exchange_rate" step="0.01" value="{{ old('exchange_rate', 25.00) }}"
+                                   style="border-radius: 0 6px 6px 0; border: 1px solid #ddd; padding: 8px 12px;">
+                            <span class="input-group-text" style="border-radius: 0 6px 6px 0; background: #f8f8f8;">ZMW</span>
+                        </div>
+                        <small class="text-muted">Exchange rate for USD, EUR, GBP to ZMW</small>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="status" class="form-label">Status *</label>
-                        <select class="form-control" id="status" name="status" required>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Status *</label>
+                        <select class="form-select form-select-sm @error('status') is-invalid @enderror" name="status"
+                                style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
                             <option value="draft">Draft</option>
                             <option value="pending">Pending Review</option>
                             <option value="approved">Approved</option>
                         </select>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="total_budget_zmw_display" class="form-label">Total Budget (ZMW)</label>
-                        <input type="text" class="form-control" id="total_budget_zmw_display" readonly value="0.00">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Total Budget (ZMW)</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="border-radius: 6px 0 0 6px; background: #28a745; color: #fff; border: none; font-size: 0.75rem;">ZMW</span>
+                            <input type="text" class="form-control form-control-sm" id="total_budget_zmw_display" readonly
+                                   value="0.00" style="border-radius: 0 6px 6px 0; border: 1px solid #ddd; background: #f8f8f8; font-weight: 600;">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Contact Information Card -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-info text-white py-3">
-                <h6 class="m-0 font-weight-bold">Contact Information</h6>
+        <!-- Contact Information -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Contact Information</h6>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="contact_person" class="form-label">Contact Person *</label>
-                        <input type="text" class="form-control" id="contact_person" name="contact_person"
-                               value="{{ old('contact_person') }}" placeholder="Enter contact person" required>
+            <div class="card-body pt-0">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold" style="color: #333;">Contact Person *</label>
+                        <input type="text" class="form-control form-control-sm @error('contact_person') is-invalid @enderror"
+                               name="contact_person" value="{{ old('contact_person') }}" placeholder="Full name"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="contact_email" class="form-label">Contact Email *</label>
-                        <input type="email" class="form-control" id="contact_email" name="contact_email"
-                               value="{{ old('contact_email') }}" placeholder="email@example.com" required>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold" style="color: #333;">Email *</label>
+                        <input type="email" class="form-control form-control-sm @error('contact_email') is-invalid @enderror"
+                               name="contact_email" value="{{ old('contact_email') }}" placeholder="email@example.com"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="contact_phone" class="form-label">Contact Phone *</label>
-                        <input type="text" class="form-control" id="contact_phone" name="contact_phone"
-                               value="{{ old('contact_phone') }}" placeholder="+260XXXXXXXXX" required>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold" style="color: #333;">Phone *</label>
+                        <input type="text" class="form-control form-control-sm @error('contact_phone') is-invalid @enderror"
+                               name="contact_phone" value="{{ old('contact_phone') }}" placeholder="+260XXXXXXXXX"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Detailed Budget Breakdown -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-success text-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold">Detailed Budget Breakdown</h6>
-                <button type="button" class="btn btn-light btn-sm" onclick="addSection()">
-                    <i class="bi bi-plus-circle"></i> Add New Section
+        <!-- Budget Breakdown -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Budget Breakdown</h6>
+                <button type="button" class="btn btn-dark btn-sm" onclick="addSection()" style="border-radius: 20px; padding: 5px 14px; font-size: 0.75rem;">
+                    <i class="bi bi-plus-lg me-1"></i> Add Section
                 </button>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body pt-0 p-2">
                 <div id="sections-container">
-                    <!-- Default Section A -->
-                    <div class="section-block mb-4" data-section-id="0">
-                        <div class="section-header bg-light p-3 border">
-                            <div class="row align-items-center">
+                    <div class="section-block mb-3" data-section-id="0">
+                        <div style="background: #f8f8f8; padding: 10px 14px; border-radius: 6px 6px 0 0; border: 1px solid #eee;">
+                            <div class="row align-items-center g-2">
                                 <div class="col-md-8">
-                                    <div class="input-group">
-                                        <span class="input-group-text">Section:</span>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="background: #000; color: #fff; border: none; font-size: 0.7rem; border-radius: 4px 0 0 4px;">Section</span>
                                         <input type="text" class="form-control section-name" name="sections[0][name]"
-                                               value="A - CORE PROGRAM EXPENDITURE" placeholder="Section Name" style="font-weight: bold;">
+                                               value="A - CORE PROGRAM EXPENDITURE" style="font-weight: 600; font-size: 0.8rem; border-radius: 0 4px 4px 0;">
                                     </div>
                                 </div>
                                 <div class="col-md-4 text-end">
-                                    <button type="button" class="btn btn-primary btn-sm" onclick="addObjective(this)">
-                                        <i class="bi bi-plus-circle"></i> Add Objective
+                                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="addObjective(this)" style="border-radius: 20px; font-size: 0.7rem; padding: 3px 10px;">
+                                        <i class="bi bi-plus"></i> Objective
                                     </button>
-                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeSection(this)">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSection(this)" style="border-radius: 20px; font-size: 0.7rem; padding: 3px 8px;">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="objectives-container p-3 border border-top-0">
-                            <!-- Objectives will be added here -->
+                        <div class="objectives-container p-2" style="border: 1px solid #eee; border-top: 0; border-radius: 0 0 6px 6px;">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Budget Summary -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-dark text-white py-3">
-                <h6 class="m-0 font-weight-bold">Budget Summary</h6>
+        <!-- Summary - Simplified -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Budget Summary</h6>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Section</th>
-                                <th class="text-end">Total ZMW</th>
-                                <th class="text-end">Total USD</th>
-                            </tr>
-                        </thead>
-                        <tbody id="section-summaries">
-                            <!-- Section summaries will be populated here -->
-                        </tbody>
-                        <tfoot>
-                            <tr class="table-primary">
-                                <th>GRAND TOTAL</th>
-                                <th class="text-end"><span id="grand-total-zmw">0.00</span></th>
-                                <th class="text-end"><span id="grand-total-usd">0.00</span></th>
-                            </tr>
-                        </tfoot>
-                    </table>
+            <div class="card-body pt-0">
+                <div class="row" id="summary-container">
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total Budget</small>
+                                <h5 class="mb-0 text-success" id="summary-zmw">ZMW 0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2" id="summary-usd-container" style="display: none;">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total (USD)</small>
+                                <h5 class="mb-0" id="summary-usd">$0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2" id="summary-eur-container" style="display: none;">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total (EUR)</small>
+                                <h5 class="mb-0" id="summary-eur">€0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2" id="summary-gbp-container" style="display: none;">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total (GBP)</small>
+                                <h5 class="mb-0" id="summary-gbp">£0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Year 1 Total</small>
+                                <h5 class="mb-0" id="summary-y1">0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Year 2 Total</small>
+                                <h5 class="mb-0" id="summary-y2">0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Year 3 Total</small>
+                                <h5 class="mb-0" id="summary-y3">0.00</h5>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Hidden fields -->
         <input type="hidden" name="total_budget_zmw" id="total_budget_zmw_hidden" value="0">
         <input type="hidden" name="total_budget_usd" id="total_budget_usd_hidden" value="0">
 
-        <!-- Submit Buttons -->
-        <div class="card shadow mb-4">
-            <div class="card-body text-center">
-                <button type="submit" class="btn btn-primary btn-lg px-5">
-                    <i class="bi bi-save me-2"></i> Save Budget
-                </button>
-                <a href="{{ route('budgets.index') }}" class="btn btn-secondary btn-lg px-5">
-                    <i class="bi bi-x-circle me-2"></i> Cancel
-                </a>
-            </div>
+        <div class="text-center mb-4">
+            <button type="submit" class="btn btn-dark px-4 me-2" id="submitBtn" style="border-radius: 20px; font-size: 0.85rem;">
+                <i class="bi bi-check-lg me-1"></i> Save Budget
+            </button>
+            <a href="{{ route('budgets.index') }}" class="btn btn-outline-dark px-4" style="border-radius: 20px; font-size: 0.85rem;">
+                Cancel
+            </a>
         </div>
     </form>
 </div>
 
-<!-- Template for new section -->
+<!-- TEMPLATES -->
 <template id="section-template">
-    <div class="section-block mb-4" data-section-id="{sectionId}">
-        <div class="section-header bg-light p-3 border">
-            <div class="row align-items-center">
+    <div class="section-block mb-3" data-section-id="{sectionId}">
+        <div style="background: #f8f8f8; padding: 10px 14px; border-radius: 6px 6px 0 0; border: 1px solid #eee;">
+            <div class="row align-items-center g-2">
                 <div class="col-md-8">
-                    <div class="input-group">
-                        <span class="input-group-text">Section:</span>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text" style="background: #000; color: #fff; border: none; font-size: 0.7rem; border-radius: 4px 0 0 4px;">Section</span>
                         <input type="text" class="form-control section-name" name="sections[{sectionId}][name]"
-                               placeholder="e.g., B - INSTITUTIONAL SUPPORT EXPENDITURE" style="font-weight: bold;">
+                               placeholder="Section name" style="font-weight: 600; font-size: 0.8rem; border-radius: 0 4px 4px 0;">
                     </div>
                 </div>
                 <div class="col-md-4 text-end">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="addObjective(this)">
-                        <i class="bi bi-plus-circle"></i> Add Objective
+                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="addObjective(this)" style="border-radius: 20px; font-size: 0.7rem; padding: 3px 10px;">
+                        <i class="bi bi-plus"></i> Objective
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="removeSection(this)">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSection(this)" style="border-radius: 20px; font-size: 0.7rem; padding: 3px 8px;">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
             </div>
         </div>
-        <div class="objectives-container p-3 border border-top-0">
-            <!-- Objectives will be added here -->
-        </div>
+        <div class="objectives-container p-2" style="border: 1px solid #eee; border-top: 0; border-radius: 0 0 6px 6px;"></div>
     </div>
 </template>
 
-<!-- Template for new objective -->
 <template id="objective-template">
-    <div class="objective-block mb-3 p-3 bg-white border rounded">
+    <div class="objective-block mb-2 p-2" style="border-left: 3px solid #000; background: #fff; border-radius: 0 4px 4px 0;">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="flex-grow-1 me-3">
-                <label class="form-label fw-bold">Objective:</label>
-                <input type="text" class="form-control objective-text" name="sections[{sectionId}][objectives][{objectiveId}][text]"
-                       placeholder="e.g., OBJECTIVE 1: To strengthen technical and institutional capacity...">
+            <div class="flex-grow-1 me-2">
+                <input type="text" class="form-control form-control-sm objective-text"
+                       name="sections[{sectionId}][objectives][{objectiveId}][description]"
+                       placeholder="Objective description..." style="font-size: 0.75rem; border: 1px solid #ddd;">
             </div>
-            <div>
-                <button type="button" class="btn btn-success btn-sm" onclick="addActivity(this)">
-                    <i class="bi bi-plus-circle"></i> Add Activity
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="addActivity(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 8px;">
+                    <i class="bi bi-plus"></i> Activity
                 </button>
-                <button type="button" class="btn btn-danger btn-sm" onclick="removeObjective(this)">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeObjective(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 6px;">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
         </div>
-        <div class="activities-container ps-3">
-            <!-- Activities will be added here -->
-        </div>
+        <div class="activities-container"></div>
     </div>
 </template>
 
-<!-- Template for new activity -->
 <template id="activity-template">
-    <div class="activity-block mb-3 p-3 bg-light border rounded">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="flex-grow-1 me-3">
-                <label class="form-label fw-bold">Activity:</label>
-                <input type="text" class="form-control activity-text" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][text]"
-                       placeholder="e.g., ACTIVITY 1.1: Conduct the Quarterly review monitoring and evaluation process">
+    <div class="activity-block mb-2 p-2" style="border-left: 3px solid #28a745; background: #f9faf9; border-radius: 0 4px 4px 0;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="flex-grow-1 me-2">
+                <input type="text" class="form-control form-control-sm activity-text"
+                       name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][description]"
+                       placeholder="Activity description..." style="font-size: 0.75rem; border: 1px solid #ddd;">
             </div>
-            <div>
-                <button type="button" class="btn btn-info btn-sm" onclick="addBudgetLine(this)">
-                    <i class="bi bi-plus-circle"></i> Add Budget Line
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="addBudgetLine(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 8px;">
+                    <i class="bi bi-plus"></i> Add Item
                 </button>
-                <button type="button" class="btn btn-danger btn-sm" onclick="removeActivity(this)">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeActivity(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 6px;">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
         </div>
-
-        <!-- Budget Lines Table -->
         <div class="table-responsive">
-            <table class="table table-sm table-bordered budget-lines-table">
-                <thead class="table-secondary">
+            <table class="table table-sm table-bordered budget-lines-table" style="font-size: 0.7rem; margin: 0;">
+                <thead style="background: #f0f0f0; font-size: 0.65rem;">
                     <tr>
-                        <th>Component</th>
-                        <th>Cost Category</th>
-                        <th>Cost Item</th>
+                        <th>Description</th>
                         <th>No.</th>
                         <th>Freq.</th>
                         <th>Unit</th>
-                        <th>Unit Cost (ZMW)</th>
+                        <th>Cost</th>
+                        <th>Currency</th>
                         <th>Total (ZMW)</th>
-                        <th>Total (USD)</th>
-                        <th>Revised Y1</th>
-                        <th>Revised Y2</th>
-                        <th>Revised Y3</th>
-                        <th>Comment</th>
+                        <th>Y1</th>
+                        <th>Y2</th>
+                        <th>Y3</th>
+                        <th>Note</th>
                         <th></th>
                     </tr>
                 </thead>
-                <tbody class="budget-lines-body">
-                    <!-- Budget lines will be added here -->
-                </tbody>
+                <tbody class="budget-lines-body"></tbody>
                 <tfoot>
-                    <tr class="table-active fw-bold">
-                        <td colspan="7" class="text-end">Activity Total:</td>
-                        <td class="activity-total-zmw">0.00</td>
-                        <td class="activity-total-usd">0.00</td>
-                        <td class="activity-total-y1">0.00</td>
-                        <td class="activity-total-y2">0.00</td>
-                        <td class="activity-total-y3">0.00</td>
-                        <td></td>
-                        <td></td>
+                    <tr style="font-weight: 600; font-size: 0.7rem; background: #f8f8f8;">
+                        <td colspan="6" class="text-end">Activity Total:</td>
+                        <td class="activity-total text-end">0.00</td>
+                        <td class="activity-total-y1 text-end">0.00</td>
+                        <td class="activity-total-y2 text-end">0.00</td>
+                        <td class="activity-total-y3 text-end">0.00</td>
+                        <td colspan="2"></td>
                     </tr>
                 </tfoot>
             </table>
@@ -289,275 +336,256 @@
     </div>
 </template>
 
-<!-- Template for budget line -->
 <template id="budget-line-template">
     <tr class="budget-line-row">
-        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][component]" placeholder="Component"></td>
-        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][cost_category]" placeholder="Cost Category"></td>
-        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][cost_item]" placeholder="Cost Item"></td>
-        <td><input type="number" class="form-control form-control-sm number-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][number]" value="1" min="0" step="1" onchange="calculateLineTotal(this)"></td>
-        <td><input type="number" class="form-control form-control-sm frequency-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][frequency]" value="1" min="0" step="1" onchange="calculateLineTotal(this)"></td>
-        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][unit]" placeholder="Unit"></td>
-        <td><input type="number" class="form-control form-control-sm unit-cost-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][unit_cost]" value="0.00" step="0.01" min="0" onchange="calculateLineTotal(this)"></td>
-        <td><input type="number" class="form-control form-control-sm total-zmw-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][total_zmw]" value="0.00" step="0.01" readonly></td>
-        <td><input type="number" class="form-control form-control-sm total-usd-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][total_usd]" value="0.00" step="0.01" readonly></td>
-        <td><input type="number" class="form-control form-control-sm revised-y1" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][revised_y1]" value="0.00" step="0.01" min="0" onchange="updateActivityTotals(this.closest('.activity-block'))"></td>
-        <td><input type="number" class="form-control form-control-sm revised-y2" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][revised_y2]" value="0.00" step="0.01" min="0" onchange="updateActivityTotals(this.closest('.activity-block'))"></td>
-        <td><input type="number" class="form-control form-control-sm revised-y3" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][revised_y3]" value="0.00" step="0.01" min="0" onchange="updateActivityTotals(this.closest('.activity-block'))"></td>
-        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][lines][{lineId}][comment]" placeholder="Comment"></td>
-        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeBudgetLine(this)"><i class="bi bi-trash"></i></button></td>
+        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][description]" placeholder="Description" style="font-size:0.7rem; min-width:120px;"></td>
+        <td><input type="number" class="form-control form-control-sm number-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][number]" value="1" min="0" step="1" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:60px;"></td>
+        <td><input type="number" class="form-control form-control-sm frequency-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][frequency]" value="1" min="0" step="1" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:60px;"></td>
+        <td><input type="number" class="form-control form-control-sm unit-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][unit]" value="1" min="0" step="1" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:60px;"></td>
+        <td><input type="number" class="form-control form-control-sm unit-cost-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][unit_cost]" value="0.00" step="0.01" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:80px;"></td>
+        <td>
+            <select class="form-control form-control-sm currency-select" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][currency]" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:70px;">
+                <option value="ZMW">ZMW</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+            </select>
+        </td>
+        <td><input type="number" class="form-control form-control-sm total-display" readonly value="0.00" style="font-size:0.7rem; width:90px; background:#f8f8f8;"></td>
+        <td><input type="number" class="form-control form-control-sm year-input year-1" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][year_1]" value="0.00" step="0.01" onchange="updateActivityTotals(this.closest('.activity-block'))" style="font-size:0.7rem; width:70px;"></td>
+        <td><input type="number" class="form-control form-control-sm year-input year-2" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][year_2]" value="0.00" step="0.01" onchange="updateActivityTotals(this.closest('.activity-block'))" style="font-size:0.7rem; width:70px;"></td>
+        <td><input type="number" class="form-control form-control-sm year-input year-3" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][year_3]" value="0.00" step="0.01" onchange="updateActivityTotals(this.closest('.activity-block'))" style="font-size:0.7rem; width:70px;"></td>
+        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][note]" placeholder="Note" style="font-size:0.7rem; min-width:100px;"></td>
+        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBudgetLine(this)" style="border-radius:50%; padding:1px 5px; font-size:0.6rem;"><i class="bi bi-x"></i></button></td>
     </tr>
 </template>
 
-<style>
-.section-block {
-    border-radius: 5px;
-}
-.objective-block {
-    border-left: 3px solid #4e73df !important;
-}
-.activity-block {
-    border-left: 3px solid #1cc88a !important;
-}
-.budget-lines-table {
-    font-size: 0.8rem;
-}
-.budget-lines-table td, .budget-lines-table th {
-    padding: 0.3rem;
-    vertical-align: middle;
-}
-.budget-lines-table input {
-    min-width: 80px;
-}
-</style>
-
 <script>
-let sectionCounter = 1;
-let objectiveCounter = 0;
-let activityCounter = 0;
-let lineCounter = 0;
+let sectionCounter = 1, objectiveCounter = 0, activityCounter = 0, lineCounter = 0;
 
-// Add new section
 function addSection() {
     const container = document.getElementById('sections-container');
     const template = document.getElementById('section-template');
-    const sectionId = sectionCounter++;
-
-    let content = template.innerHTML.replace(/{sectionId}/g, sectionId);
-    container.insertAdjacentHTML('beforeend', content);
+    container.insertAdjacentHTML('beforeend', template.innerHTML.replace(/{sectionId}/g, sectionCounter++));
     updateAllTotals();
 }
 
-// Remove section
-function removeSection(button) {
-    const section = button.closest('.section-block');
-    const container = document.getElementById('sections-container');
-    if (container.children.length > 1) {
-        section.remove();
-        updateAllTotals();
-    } else {
-        alert('At least one section is required.');
-    }
+function removeSection(btn) {
+    const section = btn.closest('.section-block');
+    if (document.querySelectorAll('.section-block').length > 1) {
+        if (confirm('Delete this section?')) { section.remove(); updateAllTotals(); }
+    } else { alert('At least one section required.'); }
 }
 
-// Add objective
-function addObjective(button) {
-    const section = button.closest('.section-block');
-    const objectivesContainer = section.querySelector('.objectives-container');
+function addObjective(btn) {
+    const section = btn.closest('.section-block');
+    const container = section.querySelector('.objectives-container');
     const sectionId = section.dataset.sectionId;
-    const objectiveId = `${sectionId}_${objectiveCounter++}`;
-
-    const template = document.getElementById('objective-template');
-    let content = template.innerHTML
-        .replace(/{sectionId}/g, sectionId)
-        .replace(/{objectiveId}/g, objectiveId);
-
-    objectivesContainer.insertAdjacentHTML('beforeend', content);
+    const objectiveId = sectionId + '_' + objectiveCounter++;
+    container.insertAdjacentHTML('beforeend', document.getElementById('objective-template').innerHTML.replace(/{sectionId}/g, sectionId).replace(/{objectiveId}/g, objectiveId));
     updateAllTotals();
 }
 
-// Remove objective
-function removeObjective(button) {
-    const objective = button.closest('.objective-block');
-    objective.remove();
-    updateAllTotals();
+function removeObjective(btn) {
+    if (confirm('Delete this objective?')) { btn.closest('.objective-block').remove(); updateAllTotals(); }
 }
 
-// Add activity
-function addActivity(button) {
-    const objective = button.closest('.objective-block');
-    const activitiesContainer = objective.querySelector('.activities-container');
+function addActivity(btn) {
+    const objective = btn.closest('.objective-block');
     const section = objective.closest('.section-block');
     const sectionId = section.dataset.sectionId;
-    const objectiveInput = objective.querySelector('.objective-text');
-    const objectiveName = objectiveInput.name;
-    const matches = objectiveName.match(/sections\[(\d+)\]\[objectives\]\[([^\]]+)\]/);
-    const objectiveId = matches ? matches[2] : `${sectionId}_${activityCounter}`;
-    const activityId = `${objectiveId}_${activityCounter++}`;
-
-    const template = document.getElementById('activity-template');
-    let content = template.innerHTML
-        .replace(/{sectionId}/g, sectionId)
-        .replace(/{objectiveId}/g, objectiveId)
-        .replace(/{activityId}/g, activityId);
-
-    activitiesContainer.insertAdjacentHTML('beforeend', content);
+    const objInput = objective.querySelector('.objective-text');
+    const match = objInput.name.match(/sections\[(\d+)\]\[objectives\]\[([^\]]+)\]/);
+    const objectiveId = match ? match[2] : sectionId + '_' + activityCounter;
+    const activityId = objectiveId + '_' + activityCounter++;
+    objective.querySelector('.activities-container').insertAdjacentHTML('beforeend',
+        document.getElementById('activity-template').innerHTML.replace(/{sectionId}/g, sectionId).replace(/{objectiveId}/g, objectiveId).replace(/{activityId}/g, activityId));
 }
 
-// Remove activity
-function removeActivity(button) {
-    const activity = button.closest('.activity-block');
-    activity.remove();
-    updateAllTotals();
+function removeActivity(btn) {
+    if (confirm('Delete this activity?')) { btn.closest('.activity-block').remove(); updateAllTotals(); }
 }
 
-// Add budget line
-function addBudgetLine(button) {
-    const activity = button.closest('.activity-block');
-    const tbody = activity.querySelector('.budget-lines-body');
+function addBudgetLine(btn) {
+    const activity = btn.closest('.activity-block');
     const section = activity.closest('.section-block');
     const objective = activity.closest('.objective-block');
-
     const sectionId = section.dataset.sectionId;
-    const objectiveInput = objective.querySelector('.objective-text');
-    const objectiveName = objectiveInput.name;
-    const activityInput = activity.querySelector('.activity-text');
-    const activityName = activityInput.name;
-
-    const objMatches = objectiveName.match(/sections\[(\d+)\]\[objectives\]\[([^\]]+)\]/);
-    const actMatches = activityName.match(/sections\[\d+\]\[objectives\]\[[^\]]+\]\[activities\]\[([^\]]+)\]/);
-
-    const objectiveId = objMatches ? objMatches[2] : `${sectionId}_obj`;
-    const activityId = actMatches ? actMatches[1] : `${objectiveId}_act`;
-    const lineId = `${activityId}_${lineCounter++}`;
-
-    const template = document.getElementById('budget-line-template');
-    let content = template.innerHTML
-        .replace(/{sectionId}/g, sectionId)
-        .replace(/{objectiveId}/g, objectiveId)
-        .replace(/{activityId}/g, activityId)
-        .replace(/{lineId}/g, lineId);
-
-    tbody.insertAdjacentHTML('beforeend', content);
+    const objMatch = objective.querySelector('.objective-text').name.match(/sections\[(\d+)\]\[objectives\]\[([^\]]+)\]/);
+    const actMatch = activity.querySelector('.activity-text').name.match(/activities\]\[([^\]]+)\]/);
+    const objectiveId = objMatch ? objMatch[2] : sectionId + '_obj';
+    const activityId = actMatch ? actMatch[1] : objectiveId + '_act';
+    const lineId = lineCounter++;
+    activity.querySelector('.budget-lines-body').insertAdjacentHTML('beforeend',
+        document.getElementById('budget-line-template').innerHTML.replace(/{sectionId}/g, sectionId).replace(/{objectiveId}/g, objectiveId).replace(/{activityId}/g, activityId).replace(/{lineId}/g, lineId));
     updateActivityTotals(activity);
 }
 
-// Remove budget line
-function removeBudgetLine(button) {
-    const row = button.closest('tr');
-    const activity = row.closest('.activity-block');
-    row.remove();
+function removeBudgetLine(btn) {
+    const activity = btn.closest('.activity-block');
+    btn.closest('tr').remove();
     updateActivityTotals(activity);
 }
 
-// Calculate line total
-function calculateLineTotal(element) {
-    const row = element.closest('tr');
+function calculateLineTotal(el) {
+    const row = el.closest('tr');
     const number = parseFloat(row.querySelector('.number-input').value) || 0;
     const frequency = parseFloat(row.querySelector('.frequency-input').value) || 0;
+    const unit = parseFloat(row.querySelector('.unit-input').value) || 0;
     const unitCost = parseFloat(row.querySelector('.unit-cost-input').value) || 0;
-    const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25.00;
+    const currency = row.querySelector('.currency-select').value;
+    const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25;
 
-    const totalZMW = number * frequency * unitCost;
-    const totalUSD = totalZMW / exchangeRate;
+    // Calculate total in original currency: Number × Frequency × Unit × Cost
+    const calculatedTotalOriginal = number * frequency * unit * unitCost;
 
-    row.querySelector('.total-zmw-input').value = totalZMW.toFixed(2);
-    row.querySelector('.total-usd-input').value = totalUSD.toFixed(2);
+    // Convert to ZMW for display and storage
+    let totalInZMW = calculatedTotalOriginal;
+    if (currency !== 'ZMW') {
+        totalInZMW = calculatedTotalOriginal * exchangeRate;
+    }
 
-    const activity = row.closest('.activity-block');
-    updateActivityTotals(activity);
+    // Display total in ZMW
+    const totalDisplay = row.querySelector('.total-display');
+    totalDisplay.value = totalInZMW.toFixed(2);
+
+    // Auto-distribute to years equally
+    const year1Input = row.querySelector('.year-1');
+    const year2Input = row.querySelector('.year-2');
+    const year3Input = row.querySelector('.year-3');
+
+    if (year1Input.value == 0 && year2Input.value == 0 && year3Input.value == 0 && totalInZMW > 0) {
+        const equalShare = totalInZMW / 3;
+        year1Input.value = equalShare.toFixed(2);
+        year2Input.value = equalShare.toFixed(2);
+        year3Input.value = equalShare.toFixed(2);
+    }
+
+    updateActivityTotals(row.closest('.activity-block'));
 }
 
-// Update activity totals
 function updateActivityTotals(activity) {
     const rows = activity.querySelectorAll('.budget-line-row');
-    let totalZMW = 0, totalUSD = 0, totalY1 = 0, totalY2 = 0, totalY3 = 0;
+    let total = 0, y1 = 0, y2 = 0, y3 = 0;
 
-    rows.forEach(row => {
-        totalZMW += parseFloat(row.querySelector('.total-zmw-input').value) || 0;
-        totalUSD += parseFloat(row.querySelector('.total-usd-input').value) || 0;
-        totalY1 += parseFloat(row.querySelector('.revised-y1')?.value) || 0;
-        totalY2 += parseFloat(row.querySelector('.revised-y2')?.value) || 0;
-        totalY3 += parseFloat(row.querySelector('.revised-y3')?.value) || 0;
+    rows.forEach(r => {
+        total += parseFloat(r.querySelector('.total-display').value) || 0;
+        y1 += parseFloat(r.querySelector('.year-1').value) || 0;
+        y2 += parseFloat(r.querySelector('.year-2').value) || 0;
+        y3 += parseFloat(r.querySelector('.year-3').value) || 0;
     });
 
-    activity.querySelector('.activity-total-zmw').textContent = totalZMW.toFixed(2);
-    activity.querySelector('.activity-total-usd').textContent = totalUSD.toFixed(2);
-    activity.querySelector('.activity-total-y1').textContent = totalY1.toFixed(2);
-    activity.querySelector('.activity-total-y2').textContent = totalY2.toFixed(2);
-    activity.querySelector('.activity-total-y3').textContent = totalY3.toFixed(2);
+    activity.querySelector('.activity-total').textContent = total.toFixed(2);
+    activity.querySelector('.activity-total-y1').textContent = y1.toFixed(2);
+    activity.querySelector('.activity-total-y2').textContent = y2.toFixed(2);
+    activity.querySelector('.activity-total-y3').textContent = y3.toFixed(2);
 
     updateAllTotals();
 }
 
-// Update all totals and summaries
 function updateAllTotals() {
-    const sections = document.querySelectorAll('.section-block');
-    const summaryBody = document.getElementById('section-summaries');
-    let grandTotalZMW = 0;
-    let grandTotalUSD = 0;
+    const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25;
 
-    // Clear summary
-    summaryBody.innerHTML = '';
+    // Calculate all totals from all rows
+    let totalZMW = 0;
+    let totalUSD = 0;
+    let totalEUR = 0;
+    let totalGBP = 0;
+    let totalY1 = 0;
+    let totalY2 = 0;
+    let totalY3 = 0;
 
-    sections.forEach((section, index) => {
-        const sectionName = section.querySelector('.section-name').value || `Section ${index + 1}`;
-        const activities = section.querySelectorAll('.activity-block');
-        let sectionTotalZMW = 0;
-        let sectionTotalUSD = 0;
+    document.querySelectorAll('.budget-line-row').forEach(row => {
+        const totalInZMW = parseFloat(row.querySelector('.total-display').value) || 0;
+        const currency = row.querySelector('.currency-select').value;
+        const year1 = parseFloat(row.querySelector('.year-1').value) || 0;
+        const year2 = parseFloat(row.querySelector('.year-2').value) || 0;
+        const year3 = parseFloat(row.querySelector('.year-3').value) || 0;
 
-        activities.forEach(activity => {
-            const totalZMW = parseFloat(activity.querySelector('.activity-total-zmw').textContent) || 0;
-            const totalUSD = parseFloat(activity.querySelector('.activity-total-usd').textContent) || 0;
-            sectionTotalZMW += totalZMW;
-            sectionTotalUSD += totalUSD;
-        });
+        totalZMW += totalInZMW;
 
-        grandTotalZMW += sectionTotalZMW;
-        grandTotalUSD += sectionTotalUSD;
+        // Calculate original currency amount
+        let originalAmount = totalInZMW;
+        if (currency !== 'ZMW') {
+            originalAmount = totalInZMW / exchangeRate;
+        }
 
-        // Add to summary table
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${sectionName}</td>
-            <td class="text-end">${sectionTotalZMW.toFixed(2)}</td>
-            <td class="text-end">${sectionTotalUSD.toFixed(2)}</td>
-        `;
-        summaryBody.appendChild(row);
+        if (currency === 'USD') totalUSD += originalAmount;
+        if (currency === 'EUR') totalEUR += originalAmount;
+        if (currency === 'GBP') totalGBP += originalAmount;
+
+        totalY1 += year1;
+        totalY2 += year2;
+        totalY3 += year3;
     });
 
-    // Update grand totals
-    document.getElementById('grand-total-zmw').textContent = grandTotalZMW.toFixed(2);
-    document.getElementById('grand-total-usd').textContent = grandTotalUSD.toFixed(2);
-    document.getElementById('total_budget_zmw_display').value = grandTotalZMW.toFixed(2);
-    document.getElementById('total_budget_zmw_hidden').value = grandTotalZMW.toFixed(2);
-    document.getElementById('total_budget_usd_hidden').value = grandTotalUSD.toFixed(2);
-}
+    // Update summary display
+    document.getElementById('summary-zmw').innerHTML = 'ZMW ' + totalZMW.toFixed(2);
+    document.getElementById('summary-y1').innerHTML = totalY1.toFixed(2);
+    document.getElementById('summary-y2').innerHTML = totalY2.toFixed(2);
+    document.getElementById('summary-y3').innerHTML = totalY3.toFixed(2);
+    document.getElementById('total_budget_zmw_display').value = totalZMW.toFixed(2);
+    document.getElementById('total_budget_zmw_hidden').value = totalZMW.toFixed(2);
 
-// Update all USD amounts when exchange rate changes
-function updateAllUSDAmounts() {
-    const rows = document.querySelectorAll('.budget-line-row');
-    const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25.00;
-
-    rows.forEach(row => {
-        const totalZMW = parseFloat(row.querySelector('.total-zmw-input').value) || 0;
-        const totalUSD = totalZMW / exchangeRate;
-        row.querySelector('.total-usd-input').value = totalUSD.toFixed(2);
-    });
-
-    // Update all activity totals
-    document.querySelectorAll('.activity-block').forEach(activity => {
-        updateActivityTotals(activity);
-    });
-}
-
-// Initialize with one empty section
-document.addEventListener('DOMContentLoaded', function() {
-    // Add first objective to default section
-    const defaultSection = document.querySelector('.section-block');
-    if (defaultSection) {
-        addObjective(defaultSection.querySelector('.btn-primary'));
+    // Show/hide currency containers and update values
+    if (totalUSD > 0) {
+        document.getElementById('summary-usd-container').style.display = 'block';
+        document.getElementById('summary-usd').innerHTML = '$' + totalUSD.toFixed(2);
+    } else {
+        document.getElementById('summary-usd-container').style.display = 'none';
     }
+
+    if (totalEUR > 0) {
+        document.getElementById('summary-eur-container').style.display = 'block';
+        document.getElementById('summary-eur').innerHTML = '€' + totalEUR.toFixed(2);
+    } else {
+        document.getElementById('summary-eur-container').style.display = 'none';
+    }
+
+    if (totalGBP > 0) {
+        document.getElementById('summary-gbp-container').style.display = 'block';
+        document.getElementById('summary-gbp').innerHTML = '£' + totalGBP.toFixed(2);
+    } else {
+        document.getElementById('summary-gbp-container').style.display = 'none';
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+document.getElementById('budgetForm').addEventListener('submit', function() {
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
+    updateAllTotals();
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const s = document.querySelector('.section-block');
+    if (s) {
+        const objectivesContainer = s.querySelector('.objectives-container');
+        if (objectivesContainer && objectivesContainer.children.length === 0) {
+            const addBtn = s.querySelector('button[onclick*="addObjective"]');
+            if (addBtn) addObjective(addBtn);
+        }
+    }
+    updateAllTotals();
+});
+
+// Update all calculations when exchange rate changes
+const exchangeRateInput = document.getElementById('exchange_rate');
+if (exchangeRateInput) {
+    exchangeRateInput.addEventListener('input', function() {
+        document.querySelectorAll('.budget-line-row').forEach(row => {
+            calculateLineTotal(row.querySelector('.unit-cost-input'));
+        });
+    });
+}
 </script>
 @endsection

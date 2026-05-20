@@ -9,78 +9,68 @@ class BudgetItem extends Model
 {
     use HasFactory;
 
+    protected $table = 'budget_items';
+
     protected $fillable = [
         'budget_id',
         'section',
         'objective',
         'activity',
-        'component',
-        'description_cost_category',
-        'description_cost_item',
+        'description',
+        'cost',
         'number',
         'frequency',
         'unit',
         'unit_cost',
+        'currency',
+        'exchange_rate_item',
+        'calculated_total',
         'total_amount_zmw',
         'total_amount_usd',
-        'revised_year_1',
-        'revised_year_2',
-        'revised_year_3',
-        'comments',
+        'year_1',
+        'year_2',
+        'year_3',
+        'note',
         'sort_order',
     ];
 
     protected $casts = [
+        'number' => 'integer',
+        'frequency' => 'integer',
         'unit_cost' => 'decimal:2',
+        'calculated_total' => 'decimal:2',
         'total_amount_zmw' => 'decimal:2',
         'total_amount_usd' => 'decimal:2',
-        'revised_year_1' => 'decimal:2',
-        'revised_year_2' => 'decimal:2',
-        'revised_year_3' => 'decimal:2',
-        'number' => 'integer',
+        'year_1' => 'decimal:2',
+        'year_2' => 'decimal:2',
+        'year_3' => 'decimal:2',
+        'exchange_rate_item' => 'decimal:4',
     ];
 
-    /**
-     * Get the budget that owns the item.
-     */
     public function budget()
     {
         return $this->belongsTo(Budget::class);
     }
 
     /**
-     * Calculate total amount based on number, frequency, and unit cost.
+     * Calculate total based on: Number × Unit Cost × Frequency
      */
-    public function calculateTotal()
+    public function calculateTotal($exchangeRate = null)
     {
-        $this->total_amount_zmw = $this->number * $this->frequency * $this->unit_cost;
+        $this->calculated_total = $this->number * $this->unit_cost * $this->frequency;
+
+        // Convert to ZMW based on currency
+        if ($this->currency === 'USD' && $exchangeRate) {
+            $this->total_amount_zmw = $this->calculated_total * $exchangeRate;
+        } else {
+            $this->total_amount_zmw = $this->calculated_total;
+        }
+
+        // Calculate USD using budget's exchange rate
         if ($this->budget && $this->budget->exchange_rate > 0) {
             $this->total_amount_usd = $this->total_amount_zmw / $this->budget->exchange_rate;
         }
+
         return $this;
-    }
-
-    /**
-     * Get formatted unit cost.
-     */
-    public function getFormattedUnitCostAttribute()
-    {
-        return 'ZMW ' . number_format($this->unit_cost, 2);
-    }
-
-    /**
-     * Get formatted total ZMW.
-     */
-    public function getFormattedTotalZMWAttribute()
-    {
-        return 'ZMW ' . number_format($this->total_amount_zmw, 2);
-    }
-
-    /**
-     * Get formatted total USD.
-     */
-    public function getFormattedTotalUSDAttribute()
-    {
-        return '$' . number_format($this->total_amount_usd, 2);
     }
 }

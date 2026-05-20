@@ -9,6 +9,8 @@ class InstitutionalDocument extends Model
 {
     use HasFactory;
 
+    protected $table = 'institutional_documents';
+
     protected $fillable = [
         'name',
         'description',
@@ -16,16 +18,15 @@ class InstitutionalDocument extends Model
         'file_path',
         'file_extension',
         'file_size',
-        'version',
-        'is_public',
+        'uploaded_by',
         'download_count',
-        'uploaded_by'
+        'is_public',
     ];
 
     protected $casts = [
         'is_public' => 'boolean',
+        'download_count' => 'integer',
         'file_size' => 'integer',
-        'download_count' => 'integer'
     ];
 
     public function uploader()
@@ -33,31 +34,6 @@ class InstitutionalDocument extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-    // Helper method to get file icon based on extension
-    public function getFileIcon()
-    {
-        $extension = strtolower($this->file_extension);
-
-        $icons = [
-            'pdf' => 'bi-file-pdf',
-            'doc' => 'bi-file-word',
-            'docx' => 'bi-file-word',
-            'xls' => 'bi-file-excel',
-            'xlsx' => 'bi-file-excel',
-            'ppt' => 'bi-file-ppt',
-            'pptx' => 'bi-file-ppt',
-            'txt' => 'bi-file-text',
-            'zip' => 'bi-file-zip',
-            'jpg' => 'bi-file-image',
-            'jpeg' => 'bi-file-image',
-            'png' => 'bi-file-image',
-            'gif' => 'bi-file-image',
-        ];
-
-        return $icons[$extension] ?? 'bi-file-earmark';
-    }
-
-    // Helper method to format file size
     public function getFormattedSize()
     {
         $bytes = $this->file_size;

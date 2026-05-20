@@ -20,9 +20,7 @@ class DocumentController extends Controller
      */
     public function index()
     {
-        // Get all categories for the dashboard
         $categories = Category::all();
-
         return view('documents.index', compact('categories'));
     }
 
@@ -34,35 +32,36 @@ class DocumentController extends Controller
         // Get categories with document counts
         $categories = Category::withCount('documents')->get();
 
-        // Get total documents count
         $totalDocuments = Document::count();
 
-        // Get current category and folder
         $currentCategory = null;
-        $currentFolder = null;
-        $subfolders = collect();
-        $parentFolders = collect();
+        $currentFolder   = null;
+        $subfolders      = collect();
+        $parentFolders   = collect();
 
-        // Handle category and folder navigation
-        if ($request->has('category_id')) {
+        // ── Resolve category ──────────────────────────────────────────────────
+        if ($request->filled('category_id')) {
             $currentCategory = Category::find($request->category_id);
-        } elseif ($request->has('category')) {
+        } elseif ($request->filled('category')) {
             $currentCategory = Category::find($request->category);
         }
 
-        if ($request->has('folder_id')) {
+        // ── Resolve folder ────────────────────────────────────────────────────
+        if ($request->filled('folder_id')) {
             $currentFolder = Folder::find($request->folder_id);
-            if ($currentFolder && $currentCategory && $currentFolder->category_id !== $currentCategory->id) {
+            // Safety: reject folder that doesn't belong to the current category
+            if ($currentFolder && $currentCategory
+                && $currentFolder->category_id !== $currentCategory->id) {
                 $currentFolder = null;
             }
         }
 
-        // Get parent folders for breadcrumb
+        // ── Breadcrumb parents ────────────────────────────────────────────────
         if ($currentFolder) {
             $parentFolders = $this->getParentFolders($currentFolder);
         }
 
-        // Get subfolders for current location
+        // ── Subfolders ────────────────────────────────────────────────────────
         if ($currentFolder) {
             $subfolders = Folder::where('parent_id', $currentFolder->id)
                 ->withCount(['documents', 'children'])
@@ -74,36 +73,44 @@ class DocumentController extends Controller
                 ->get();
         }
 
-        // Build documents query
+        // ── Documents query ───────────────────────────────────────────────────
         $query = Document::with(['user', 'folder', 'documentCategory', 'employee'])
             ->latest();
 
-        // Filter by category if specified
-        if ($currentCategory) {
-            $query->where('category_id', $currentCategory->id);
-        }
+        $isSearching = $request->filled('search');
 
-        // Filter by folder if specified
-        if ($currentFolder) {
-            $query->where('folder_id', $currentFolder->id);
-        } elseif ($currentCategory && !$request->has('search')) {
-            // When in a category but no specific folder, show documents without folders
-            $query->whereNull('folder_id');
-        }
-
-        // Apply search filter if provided
-        if ($request->has('search') && $request->search) {
+        if ($isSearching) {
+            // Global search: ignore category / folder filters so budget docs etc. are found
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
+            $query->where(function ($q) use ($search) {
+                $q->where('title',       'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('file_name', 'like', "%{$search}%");
+                  ->orWhere('file_name',   'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%");
             });
+            // Still scope to category when searching inside one
+            if ($currentCategory) {
+                $query->where('category_id', $currentCategory->id);
+            }
+        } else {
+            // Normal navigation: scope to category + folder
+            if ($currentCategory) {
+                $query->where('category_id', $currentCategory->id);
+            }
+
+            if ($currentFolder) {
+                // Inside a specific folder
+                $query->where('folder_id', $currentFolder->id);
+            } elseif ($currentCategory) {
+                // Category root: show documents that have NO folder assigned
+                // (documents with folder_id are shown when you open that folder)
+                $query->whereNull('folder_id');
+            }
+            // No category selected → show everything (All Documents view)
         }
 
         $documents = $query->paginate(10);
 
-        // Determine back URL for create form
         $backUrl = $this->getBackUrl($currentCategory, $currentFolder);
 
         return view('documents.list', compact(
@@ -119,8 +126,26 @@ class DocumentController extends Controller
     }
 
     /**
-     * Get parent folders for breadcrumb
+     * Display documents filtered by category (named route helper)
      */
+    public function byCategory(Category $category, Request $request)
+    {
+        return $this->list($request->merge(['category' => $category->id]));
+    }
+
+    /**
+     * Open a specific folder
+     */
+    public function openFolder(Request $request, $categoryId, $folderId)
+    {
+        return $this->list($request->merge([
+            'category_id' => $categoryId,
+            'folder_id'   => $folderId,
+        ]));
+    }
+
+    // ── Private navigation helpers ────────────────────────────────────────────
+
     private function getParentFolders(Folder $folder)
     {
         $parents = collect();
@@ -134,76 +159,53 @@ class DocumentController extends Controller
         return $parents;
     }
 
-    /**
-     * Get folder URL for navigation
-     */
-    private function getFolderUrl($folder, $currentCategory)
-    {
-        // Priority: currentCategory > folder's category
-        $categoryParam = $currentCategory ?? $folder->category;
-
-        if ($categoryParam) {
-            return route('folders.show', [
-                'category' => $categoryParam->id ?? $categoryParam,
-                'folder' => $folder->id
-            ]);
-        }
-
-        // Fallback
-        return '#';
-    }
-
-    /**
-     * Get back URL for navigation
-     */
     private function getBackUrl($currentCategory, $currentFolder)
     {
         if ($currentFolder) {
             if ($currentFolder->parent_id) {
-                // Go back to parent folder
                 return route('documents.list', [
                     'category_id' => $currentCategory->id,
-                    'folder_id' => $currentFolder->parent_id
+                    'folder_id'   => $currentFolder->parent_id,
                 ]);
-            } else {
-                // Go back to category root
-                return route('documents.category', $currentCategory);
             }
-        } elseif ($currentCategory) {
             return route('documents.category', $currentCategory);
-        } else {
-            return route('documents.list');
         }
+
+        if ($currentCategory) {
+            return route('documents.category', $currentCategory);
+        }
+
+        return route('documents.list');
     }
+
+    // ── CRUD ──────────────────────────────────────────────────────────────────
 
     /**
      * Show the form for creating a new document.
      */
     public function create(Request $request)
     {
-        $categories = Category::all();
+        $categories      = Category::all();
         $currentCategory = null;
-        $currentFolder = null;
-        $backUrl = route('documents.list');
+        $currentFolder   = null;
+        $backUrl         = route('documents.list');
 
-        // Get current category and folder from request
-        if ($request->has('category_id')) {
+        if ($request->filled('category_id')) {
             $currentCategory = Category::find($request->category_id);
             $backUrl = route('documents.category', $currentCategory);
         }
 
-        if ($request->has('folder_id')) {
+        if ($request->filled('folder_id')) {
             $currentFolder = Folder::find($request->folder_id);
             if ($currentFolder) {
                 $currentCategory = $currentFolder->category;
                 $backUrl = route('documents.list', [
                     'category_id' => $currentCategory->id,
-                    'folder_id' => $currentFolder->id
+                    'folder_id'   => $currentFolder->id,
                 ]);
             }
         }
 
-        // If no specific category/folder, use first category as default
         if (!$currentCategory && $categories->isNotEmpty()) {
             $currentCategory = $categories->first();
         }
@@ -222,22 +224,19 @@ class DocumentController extends Controller
     public function store(Request $request)
     {
         Log::info('=== DOCUMENT STORE METHOD CALLED ===');
-        Log::info('Request data:', $request->except(['file']));
 
-        // Enhanced validation
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'file' => 'required|file|max:10240', // 10MB max
+            'title'       => 'required|string|max:255',
+            'file'        => 'required|file|max:10240',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
         ], [
-            'file.required' => 'Please select a file to upload.',
-            'file.max' => 'The file size must not exceed 10MB.',
+            'file.required'        => 'Please select a file to upload.',
+            'file.max'             => 'The file size must not exceed 10MB.',
             'category_id.required' => 'Please select a category.',
         ]);
 
         if ($validator->fails()) {
-            Log::error('Validation failed:', $validator->errors()->toArray());
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput()
@@ -247,99 +246,61 @@ class DocumentController extends Controller
         try {
             DB::beginTransaction();
 
-            // Handle file upload
-            if ($request->hasFile('file')) {
-                $file = $request->file('file');
+            $file     = $request->file('file');
+            $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+            $filePath = $file->storeAs('documents', $fileName, 'public');
 
-                Log::info('File details:', [
-                    'name' => $file->getClientOriginalName(),
-                    'size' => $file->getSize(),
-                    'mime' => $file->getClientMimeType(),
-                ]);
+            $documentData = [
+                'title'         => $request->title,
+                'file_name'     => $file->getClientOriginalName(),
+                'file_path'     => $filePath,
+                'file_size'     => $file->getSize(),
+                'file_type'     => $file->getClientMimeType(),
+                'description'   => $request->description ?? null,
+                'category_id'   => $request->category_id,
+                'folder_id'     => $request->filled('current_folder_id') ? $request->current_folder_id : null,
+                'created_by'    => Auth::id(),
+                'status'        => 'active',
+                'department'    => 'general',
+                'document_type' => 'other',
+                'version'       => '1.0',
+            ];
 
-                // Generate unique filename
-                $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-                $filePath = $file->storeAs('documents', $fileName, 'public');
+            $document = Document::create($documentData);
 
-                Log::info('File stored at:', ['path' => $filePath]);
+            DB::commit();
 
-                // Prepare document data
-                $documentData = [
-                    'title' => $request->title,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_path' => $filePath,
-                    'file_size' => $file->getSize(),
-                    'file_type' => $file->getClientMimeType(),
-                    'description' => $request->description ?? null,
-                    'category_id' => $request->category_id,
-                    'created_by' => Auth::id(),
-                    'status' => 'active',
-                    // Set default values for required fields
-                    'department' => 'general',
-                    'document_type' => 'other',
-                    'version' => '1.0',
-                ];
-
-                // Set folder_id if provided
-                if ($request->has('current_folder_id') && $request->current_folder_id) {
-                    $documentData['folder_id'] = $request->current_folder_id;
-                }
-
-                Log::info('Final document data:', $documentData);
-
-                // Create the document
-                $document = Document::create($documentData);
-
-                Log::info('Document created successfully:', ['document_id' => $document->id]);
-
-                DB::commit();
-
-                // Redirect back to the appropriate location
-                $redirectUrl = $this->getRedirectUrl($request, $document);
-                return redirect($redirectUrl)
-                    ->with('success', 'Document uploaded successfully!');
-            } else {
-                Log::error('No file uploaded');
-                return back()->with('error', 'No file was uploaded. Please select a file.')
-                    ->withInput();
-            }
+            return redirect($this->getRedirectUrl($request, $document))
+                ->with('success', 'Document uploaded successfully!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Document store error:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            Log::error('Document store error: ' . $e->getMessage());
             return back()->with('error', 'An error occurred while uploading the document: ' . $e->getMessage())
                 ->withInput();
         }
     }
 
-    /**
-     * Get redirect URL based on current location
-     */
     private function getRedirectUrl(Request $request, Document $document)
     {
-        // Priority: current_folder_id > category_id > documents.list
-        if ($request->has('current_folder_id') && $request->current_folder_id) {
+        if ($request->filled('current_folder_id')) {
             $folder = Folder::find($request->current_folder_id);
             if ($folder) {
                 return route('documents.list', [
                     'category_id' => $folder->category_id,
-                    'folder_id' => $folder->id
+                    'folder_id'   => $folder->id,
                 ]);
             }
         }
 
-        if ($request->has('category_id') && $request->category_id) {
+        if ($request->filled('category_id')) {
             return route('documents.category', ['category' => $request->category_id]);
         }
 
         if ($document->folder_id) {
             return route('documents.list', [
                 'category_id' => $document->category_id,
-                'folder_id' => $document->folder_id
+                'folder_id'   => $document->folder_id,
             ]);
         }
 
@@ -366,28 +327,27 @@ class DocumentController extends Controller
      */
     public function edit($id)
     {
-        $document = Document::findOrFail($id);
+        $document   = Document::findOrFail($id);
         $categories = Category::all();
-        $backUrl = $this->getEditBackUrl($document);
+        $backUrl    = $this->getEditBackUrl($document);
 
         return view('documents.edit', compact('document', 'categories', 'backUrl'));
     }
 
-    /**
-     * Get back URL for edit form
-     */
     private function getEditBackUrl(Document $document)
     {
         if ($document->folder_id) {
             return route('documents.list', [
                 'category_id' => $document->category_id,
-                'folder_id' => $document->folder_id
+                'folder_id'   => $document->folder_id,
             ]);
-        } elseif ($document->category_id) {
-            return route('documents.category', ['category' => $document->category_id]);
-        } else {
-            return route('documents.list');
         }
+
+        if ($document->category_id) {
+            return route('documents.category', ['category' => $document->category_id]);
+        }
+
+        return route('documents.list');
     }
 
     /**
@@ -398,8 +358,8 @@ class DocumentController extends Controller
         $document = Document::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'file' => 'nullable|file|max:10240',
+            'title'       => 'required|string|max:255',
+            'file'        => 'nullable|file|max:10240',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
         ]);
@@ -415,19 +375,17 @@ class DocumentController extends Controller
             DB::beginTransaction();
 
             $documentData = [
-                'title' => $request->title,
+                'title'       => $request->title,
                 'description' => $request->description ?? null,
                 'category_id' => $request->category_id,
             ];
 
-            // Handle file upload if new file is provided
             if ($request->hasFile('file')) {
-                // Delete old file
                 if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
                     Storage::disk('public')->delete($document->file_path);
                 }
 
-                $file = $request->file('file');
+                $file     = $request->file('file');
                 $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
                 $filePath = $file->storeAs('documents', $fileName, 'public');
 
@@ -441,9 +399,7 @@ class DocumentController extends Controller
 
             DB::commit();
 
-            // Redirect back to appropriate location
-            $redirectUrl = $this->getEditRedirectUrl($document);
-            return redirect($redirectUrl)
+            return redirect($this->getEditRedirectUrl($document))
                 ->with('success', 'Document updated successfully!');
 
         } catch (\Exception $e) {
@@ -453,21 +409,20 @@ class DocumentController extends Controller
         }
     }
 
-    /**
-     * Get redirect URL for after edit
-     */
     private function getEditRedirectUrl(Document $document)
     {
         if ($document->folder_id) {
             return route('documents.list', [
                 'category_id' => $document->category_id,
-                'folder_id' => $document->folder_id
+                'folder_id'   => $document->folder_id,
             ]);
-        } elseif ($document->category_id) {
-            return route('documents.category', ['category' => $document->category_id]);
-        } else {
-            return route('documents.list');
         }
+
+        if ($document->category_id) {
+            return route('documents.category', ['category' => $document->category_id]);
+        }
+
+        return route('documents.list');
     }
 
     /**
@@ -478,10 +433,9 @@ class DocumentController extends Controller
         try {
             DB::beginTransaction();
 
-            $document = Document::findOrFail($id);
+            $document    = Document::findOrFail($id);
             $redirectUrl = $this->getDestroyRedirectUrl($document);
 
-            // Delete file from storage
             if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
                 Storage::disk('public')->delete($document->file_path);
             }
@@ -490,8 +444,7 @@ class DocumentController extends Controller
 
             DB::commit();
 
-            return redirect($redirectUrl)
-                ->with('success', 'Document deleted successfully.');
+            return redirect($redirectUrl)->with('success', 'Document deleted successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -499,21 +452,20 @@ class DocumentController extends Controller
         }
     }
 
-    /**
-     * Get redirect URL after destroy
-     */
     private function getDestroyRedirectUrl(Document $document)
     {
         if ($document->folder_id) {
             return route('documents.list', [
                 'category_id' => $document->category_id,
-                'folder_id' => $document->folder_id
+                'folder_id'   => $document->folder_id,
             ]);
-        } elseif ($document->category_id) {
-            return route('documents.category', ['category' => $document->category_id]);
-        } else {
-            return route('documents.list');
         }
+
+        if ($document->category_id) {
+            return route('documents.category', ['category' => $document->category_id]);
+        }
+
+        return route('documents.list');
     }
 
     /**
@@ -523,29 +475,15 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
 
+        // Budget / reference documents have no physical file
+        if (!$document->file_path) {
+            return redirect()->back()->with('error', 'This document has no downloadable file. View it in the Budget module.');
+        }
+
         if (!Storage::disk('public')->exists($document->file_path)) {
-            return redirect()->back()->with('error', 'File not found.');
+            return redirect()->back()->with('error', 'File not found on disk.');
         }
 
         return Storage::disk('public')->download($document->file_path, $document->file_name);
-    }
-
-    /**
-     * Display documents by category with folder support
-     */
-    public function byCategory(Category $category, Request $request)
-    {
-        return $this->list($request->merge(['category' => $category->id]));
-    }
-
-    /**
-     * Open a specific folder
-     */
-    public function openFolder(Request $request, $categoryId, $folderId)
-    {
-        return $this->list($request->merge([
-            'category_id' => $categoryId,
-            'folder_id' => $folderId
-        ]));
     }
 }

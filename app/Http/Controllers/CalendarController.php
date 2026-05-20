@@ -5,27 +5,32 @@ namespace App\Http\Controllers;
 use App\Models\CalendarEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class CalendarController extends Controller
 {
     public function index(Request $request)
     {
         // Get current date
-        $currentDate = now();
+        $currentDate = Carbon::now();
 
-        // Handle month navigation
-        if ($request->has('month') && $request->month === 'prev') {
-            $currentDate = now()->subMonth();
-        } elseif ($request->has('month') && $request->month === 'next') {
-            $currentDate = now()->addMonth();
+        // Handle month navigation (prev/next buttons)
+        if ($request->has('month')) {
+            if ($request->month === 'prev') {
+                $currentDate = Carbon::now()->subMonth();
+            } elseif ($request->month === 'next') {
+                $currentDate = Carbon::now()->addMonth();
+            }
         }
 
-        // If specific month/year provided
+        // If specific month/year provided (from dropdown or direct link)
         if ($request->has('month') && is_numeric($request->month)) {
-            $currentDate = now()->setMonth($request->month);
-        }
-        if ($request->has('year') && is_numeric($request->year)) {
-            $currentDate = now()->setYear($request->year);
+            $month = (int)$request->month; // Convert to integer
+            $year = $request->has('year') ? (int)$request->year : $currentDate->year;
+            $currentDate = Carbon::createFromDate($year, $month, 1);
+        } elseif ($request->has('year') && is_numeric($request->year)) {
+            $year = (int)$request->year;
+            $currentDate = Carbon::createFromDate($year, $currentDate->month, 1);
         }
 
         $month = $currentDate->month;
@@ -42,16 +47,16 @@ class CalendarController extends Controller
             ->orderBy('start', 'asc')
             ->get();
 
-        // Get upcoming events (next 5)
+        // Get upcoming events (next 5, excluding today)
         $upcomingEvents = CalendarEvent::where('user_id', Auth::id())
-            ->where('start', '>=', now())
+            ->where('start', '>', Carbon::now())
             ->orderBy('start', 'asc')
             ->take(5)
             ->get();
 
         // Get today's events
         $todayEvents = CalendarEvent::where('user_id', Auth::id())
-            ->whereDate('start', now()->toDateString())
+            ->whereDate('start', Carbon::today())
             ->orderBy('start', 'asc')
             ->get();
 
@@ -79,8 +84,8 @@ class CalendarController extends Controller
         ]);
 
         // Combine date and time
-        $startDateTime = $request->start_date . ' ' . $request->start_time . ':00';
-        $endDateTime = $request->end_time ? $request->start_date . ' ' . $request->end_time . ':00' : null;
+        $startDateTime = Carbon::parse($request->start_date . ' ' . $request->start_time);
+        $endDateTime = $request->end_time ? Carbon::parse($request->start_date . ' ' . $request->end_time) : null;
 
         $event = CalendarEvent::create([
             'title' => $request->title,
@@ -129,8 +134,8 @@ class CalendarController extends Controller
         ]);
 
         // Combine date and time
-        $startDateTime = $request->start_date . ' ' . $request->start_time . ':00';
-        $endDateTime = $request->end_time ? $request->start_date . ' ' . $request->end_time . ':00' : null;
+        $startDateTime = Carbon::parse($request->start_date . ' ' . $request->start_time);
+        $endDateTime = $request->end_time ? Carbon::parse($request->start_date . ' ' . $request->end_time) : null;
 
         $event->update([
             'title' => $request->title,
@@ -165,8 +170,8 @@ class CalendarController extends Controller
             }
 
             if ($request->has('year') && $request->has('month')) {
-                $query->whereYear('start', $request->year)
-                      ->whereMonth('start', $request->month);
+                $query->whereYear('start', (int)$request->year)
+                      ->whereMonth('start', (int)$request->month);
             }
 
             $events = $query->get()->map(function($event) {

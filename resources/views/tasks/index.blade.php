@@ -23,7 +23,7 @@
     background-color: #f8f9fa;
 }
 .status-history {
-    max-height: 250px; /* Increased height */
+    max-height: 250px;
     overflow-y: auto;
     font-size: 0.8rem;
     border: 1px solid #e0e0e0;
@@ -84,6 +84,23 @@
     font-size: 0.75rem;
     padding: 4px 8px;
 }
+
+/* Weekly Plan Styles */
+.weekly-plan-card {
+    transition: all 0.2s ease;
+}
+.weekly-plan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.team-plan-accordion .accordion-button:not(.collapsed) {
+    background-color: #e8f5e8;
+    color: #198754;
+}
+.team-plan-accordion .accordion-button:focus {
+    box-shadow: none;
+    border-color: #198754;
+}
 </style>
 
 <div class="container-fluid">
@@ -117,6 +134,110 @@
                         </div>
                     @endif
 
+                    <!-- ========= WEEKLY TASK PLANNING SECTION ========= -->
+                    <div class="bg-white p-4 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="mb-0 fw-bold text-success">
+                                    <i class="bi bi-calendar-week me-2"></i>My Weekly Plan
+                                </h6>
+                                <small class="text-muted">Week of {{ $currentWeekStart->format('M d, Y') }} - {{ $currentWeekEnd->format('M d, Y') }}</small>
+                            </div>
+                            <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#weeklyPlanModal">
+                                <i class="bi bi-plus-circle me-1"></i>
+                                {{ isset($myWeeklyPlan) && $myWeeklyPlan ? 'Edit Weekly Plan' : 'Submit Weekly Plan' }}
+                            </button>
+                        </div>
+
+                        @if(isset($myWeeklyPlan) && $myWeeklyPlan && count($myWeeklyPlan->planned_tasks) > 0)
+                            <div class="row g-2">
+                                @foreach($myWeeklyPlan->planned_tasks as $index => $task)
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="card border-success bg-light weekly-plan-card">
+                                            <div class="card-body py-2 px-3">
+                                                <div class="d-flex align-items-start">
+                                                    <span class="badge bg-success me-2 mt-1">{{ $index + 1 }}</span>
+                                                    <span class="small">{{ $task }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-3 bg-light rounded">
+                                <i class="bi bi-calendar2-week text-muted fs-4"></i>
+                                <p class="text-muted small mb-0">No weekly plan submitted yet. Click the button above to plan your week!</p>
+                            </div>
+                        @endif
+
+                        <!-- Supervisor View: See Everyone's Plans -->
+                        @if(auth()->user()->role === 'admin' || auth()->user()->role === 'supervisor')
+                            <hr class="my-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0 fw-bold text-success">
+                                    <i class="bi bi-people me-2"></i>Team Weekly Plans
+                                </h6>
+                                <small class="text-muted">What everyone is working on this week</small>
+                            </div>
+
+                            @php
+                                $teamPlans = $weeklyPlans->where('user_id', '!=', Auth::id());
+                            @endphp
+
+                            @if($teamPlans->count() > 0)
+                                <div class="accordion team-plan-accordion" id="teamPlansAccordion">
+                                    @foreach($teamPlans as $plan)
+                                        <div class="accordion-item border-0 mb-2">
+                                            <div class="accordion-header" id="heading{{ $plan->id }}">
+                                                <button class="accordion-button collapsed bg-light rounded" type="button"
+                                                        data-bs-toggle="collapse" data-bs-target="#collapse{{ $plan->id }}"
+                                                        style="background-color: #f8f9fa; font-size: 0.9rem;">
+                                                    <div class="d-flex justify-content-between w-100 me-3">
+                                                        <span>
+                                                            <i class="bi bi-person-circle text-success me-2"></i>
+                                                            <strong>{{ $plan->user->name }}</strong>
+                                                        </span>
+                                                        <span class="text-muted">
+                                                            <i class="bi bi-list-check me-1"></i>{{ count($plan->planned_tasks) }} tasks planned
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                            <div id="collapse{{ $plan->id }}" class="accordion-collapse collapse"
+                                                 data-bs-parent="#teamPlansAccordion">
+                                                <div class="accordion-body pt-3">
+                                                    <div class="row g-2">
+                                                        @foreach($plan->planned_tasks as $index => $task)
+                                                            <div class="col-12">
+                                                                <div class="d-flex align-items-start">
+                                                                    <span class="badge bg-secondary me-2 mt-1">{{ $index + 1 }}</span>
+                                                                    <span class="small">{{ $task }}</span>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                    <div class="mt-2 pt-2 border-top">
+                                                        <small class="text-muted">
+                                                            <i class="bi bi-clock me-1"></i>
+                                                            Submitted: {{ $plan->created_at->format('M d, Y \a\t g:i A') }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center py-3 bg-light rounded">
+                                    <i class="bi bi-people text-muted fs-4"></i>
+                                    <p class="text-muted small mb-0">No team members have submitted weekly plans yet.</p>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+
+                    <!-- Tasks Table -->
                     @if($tasks->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-bordered excel-table m-0">
@@ -168,13 +289,12 @@
                                                     @php
                                                         $statusHistory = $task->status_history ?? [];
                                                         $totalEntries = count($statusHistory);
-                                                        $showEntries = 3; // Show last 3 entries by default
+                                                        $showEntries = 3;
                                                         $showAll = request()->get('show_all') == $task->id;
                                                     @endphp
 
                                                     @if(!empty($statusHistory))
                                                         @if($showAll)
-                                                            <!-- Show all entries -->
                                                             @foreach($statusHistory as $index => $history)
                                                                 <div class="status-entry {{ $history['user_type'] }}">
                                                                     <strong>{{ $history['user_type'] == 'assigner' ? $task->assigner->name : $task->assignee->name }}:</strong>
@@ -188,8 +308,6 @@
                                                                     </small>
                                                                 </div>
                                                             @endforeach
-
-                                                            <!-- Show Less button -->
                                                             @if($totalEntries > $showEntries)
                                                                 <div class="text-center mt-2">
                                                                     <a href="{{ request()->fullUrlWithQuery(['show_all' => null]) }}" class="btn btn-outline-secondary btn-sm history-toggle">
@@ -198,7 +316,6 @@
                                                                 </div>
                                                             @endif
                                                         @else
-                                                            <!-- Show limited entries -->
                                                             @foreach(array_slice($statusHistory, -$showEntries) as $history)
                                                                 <div class="status-entry {{ $history['user_type'] }}">
                                                                     <strong>{{ $history['user_type'] == 'assigner' ? $task->assigner->name : $task->assignee->name }}:</strong>
@@ -212,8 +329,6 @@
                                                                     </small>
                                                                 </div>
                                                             @endforeach
-
-                                                            <!-- Show More button -->
                                                             @if($totalEntries > $showEntries)
                                                                 <div class="text-center mt-2">
                                                                     <a href="{{ request()->fullUrlWithQuery(['show_all' => $task->id]) }}" class="btn btn-outline-primary btn-sm history-toggle">
@@ -242,7 +357,6 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <!-- Status Update Button -->
                                                     <button class="btn btn-outline-primary btn-sm update-status-btn"
                                                             data-bs-toggle="modal"
                                                             data-bs-target="#statusUpdateModal"
@@ -253,7 +367,6 @@
                                                         <i class="bi bi-chat-left-text"></i>
                                                     </button>
 
-                                                    <!-- Quick Complete Button -->
                                                     @if($task->assigned_to === Auth::id() && $task->status !== 'completed')
                                                         <form action="{{ route('tasks.quick-complete', $task) }}" method="POST" class="d-inline ms-1">
                                                             @csrf
@@ -265,7 +378,6 @@
                                                         </form>
                                                     @endif
 
-                                                    <!-- Delete Button -->
                                                     @if($task->assigned_by === Auth::id())
                                                         <form action="{{ route('tasks.destroy', $task) }}" method="POST" class="d-inline ms-1">
                                                             @csrf
@@ -412,11 +524,143 @@
     </div>
 </div>
 
-<script>
-// Simple and reliable JavaScript for modal functionality
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Tasks page loaded successfully');
+<!-- Weekly Plan Modal -->
+<div class="modal fade" id="weeklyPlanModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-success">
+                    <i class="bi bi-calendar-week me-2"></i>
+                    {{ isset($myWeeklyPlan) && $myWeeklyPlan ? 'Edit Weekly Plan' : 'Submit Weekly Plan' }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
 
+            @if(isset($myWeeklyPlan) && $myWeeklyPlan)
+                <!-- EDIT FORM - NO _method field, just POST -->
+                <form action="{{ url('/weekly-plans/' . $myWeeklyPlan->id) }}" method="POST" id="weeklyPlanForm">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-calendar-week text-success me-1"></i>
+                                Week of {{ $currentWeekStart->format('M d, Y') }} - {{ $currentWeekEnd->format('M d, Y') }}
+                            </label>
+                            <input type="hidden" name="week_start" value="{{ $currentWeekStart->format('Y-m-d') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                What are you planning to work on this week?
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div id="tasksList">
+                                @foreach($myWeeklyPlan->planned_tasks as $index => $task)
+                                    <div class="input-group mb-2 task-item">
+                                        <span class="input-group-text bg-light">{{ $index + 1 }}</span>
+                                        <input type="text" class="form-control" name="planned_tasks[]"
+                                               value="{{ $task }}" placeholder="Enter task description" required>
+                                        <button type="button" class="btn btn-outline-danger remove-task" onclick="removeTask(this)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addTask()">
+                                <i class="bi bi-plus-circle me-1"></i>Add Another Task
+                            </button>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-info-circle text-success"></i>
+                                List the specific tasks you plan to complete this week. This helps supervisors understand your workload before assigning new tasks.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-save me-1"></i>Update Weekly Plan
+                        </button>
+                    </div>
+                </form>
+            @else
+                <!-- CREATE FORM -->
+                <form action="{{ route('weekly-plans.store') }}" method="POST" id="weeklyPlanForm">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-calendar-week text-success me-1"></i>
+                                Week of {{ $currentWeekStart->format('M d, Y') }} - {{ $currentWeekEnd->format('M d, Y') }}
+                            </label>
+                            <input type="hidden" name="week_start" value="{{ $currentWeekStart->format('Y-m-d') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                What are you planning to work on this week?
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div id="tasksList">
+                                <div class="input-group mb-2 task-item">
+                                    <span class="input-group-text bg-light">1</span>
+                                    <input type="text" class="form-control" name="planned_tasks[]"
+                                           placeholder="Enter task description" required>
+                                    <button type="button" class="btn btn-outline-danger remove-task" onclick="removeTask(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addTask()">
+                                <i class="bi bi-plus-circle me-1"></i>Add Another Task
+                            </button>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-info-circle text-success"></i>
+                                List the specific tasks you plan to complete this week. This helps supervisors understand your workload before assigning new tasks.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="bi bi-save me-1"></i>Save Weekly Plan
+                        </button>
+                    </div>
+                </form>
+            @endif
+        </div>
+    </div>
+</div>
+
+<script>
+let taskCounter = {{ isset($myWeeklyPlan) && $myWeeklyPlan ? count($myWeeklyPlan->planned_tasks) : 1 }};
+
+function addTask() {
+    taskCounter++;
+    const tasksList = document.getElementById('tasksList');
+    const newTask = document.createElement('div');
+    newTask.className = 'input-group mb-2 task-item';
+    newTask.innerHTML = `
+        <span class="input-group-text bg-light">${taskCounter}</span>
+        <input type="text" class="form-control" name="planned_tasks[]"
+               placeholder="Enter task description" required>
+        <button type="button" class="btn btn-outline-danger remove-task" onclick="removeTask(this)">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    tasksList.appendChild(newTask);
+}
+
+function removeTask(button) {
+    button.closest('.task-item').remove();
+    // Renumber remaining tasks
+    document.querySelectorAll('#tasksList .task-item').forEach((item, idx) => {
+        item.querySelector('.input-group-text').textContent = idx + 1;
+    });
+    taskCounter = document.querySelectorAll('#tasksList .task-item').length;
+}
+
+// Handle status update buttons
+document.addEventListener('DOMContentLoaded', function() {
     // Handle status update buttons
     document.querySelectorAll('.update-status-btn').forEach(button => {
         button.addEventListener('click', function() {
@@ -424,28 +668,46 @@ document.addEventListener('DOMContentLoaded', function() {
             const taskTitle = this.getAttribute('data-task-title');
             const currentStatus = this.getAttribute('data-current-status');
 
-            console.log('Setting up modal for task:', taskId, taskTitle, currentStatus);
-
-            // Update the modal form fields
             document.getElementById('status_task_id').value = taskId;
             document.getElementById('status_task_title').textContent = taskTitle;
             document.getElementById('current_status').textContent = currentStatus.replace('_', ' ');
             document.getElementById('current_status').className = 'badge status-' + currentStatus;
 
-            // Set the form action
             const form = document.getElementById('statusUpdateForm');
             form.action = '/tasks/' + taskId + '/status-update';
-
-            console.log('Form action set to:', form.action);
         });
     });
 
-    // Add form submission logging for debugging
-    document.getElementById('statusUpdateForm')?.addEventListener('submit', function(e) {
-        console.log('Status update form submitted');
-        console.log('Task ID:', document.getElementById('status_task_id').value);
-        console.log('Form action:', this.action);
-    });
+    // Validate weekly plan form before submission
+    const weeklyForm = document.getElementById('weeklyPlanForm');
+    if (weeklyForm) {
+        weeklyForm.addEventListener('submit', function(e) {
+            const tasks = document.querySelectorAll('#tasksList input[name="planned_tasks[]"]');
+            let hasValidTask = false;
+            let hasEmpty = false;
+
+            tasks.forEach(task => {
+                if (task.value.trim() !== '') {
+                    hasValidTask = true;
+                } else {
+                    hasEmpty = true;
+                    task.classList.add('is-invalid');
+                }
+            });
+
+            if (!hasValidTask) {
+                e.preventDefault();
+                alert('Please add at least one task to your weekly plan.');
+                return false;
+            }
+
+            if (hasEmpty) {
+                e.preventDefault();
+                alert('Please fill in all task descriptions or remove empty fields.');
+                return false;
+            }
+        });
+    }
 });
 </script>
 @endsection

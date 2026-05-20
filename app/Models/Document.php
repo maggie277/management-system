@@ -12,10 +12,6 @@ class Document extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // ... rest of your model
-
-    use HasFactory;
-
     protected $fillable = [
         'title',
         'file_name',
@@ -34,6 +30,7 @@ class Document extends Model
         'folder_id',
         'category_id',
         'is_public',
+        'is_active',
         // HR specific fields
         'employee_id',
         'contract_type',
@@ -48,15 +45,19 @@ class Document extends Model
         // Budget fields
         'fiscal_year',
         'budget_type',
-        'total_amount'
+        'total_amount',
     ];
 
     protected $casts = [
-        'effective_date' => 'date',
-        'expiry_date' => 'date',
-        'contract_value' => 'decimal:2',
-        'total_amount' => 'decimal:2',
+        'effective_date'  => 'date',
+        'expiry_date'     => 'date',
+        'contract_value'  => 'decimal:2',
+        'total_amount'    => 'decimal:2',
+        'is_public'       => 'boolean',
+        'is_active'       => 'boolean',
     ];
+
+    // ── Relationships ─────────────────────────────────────────────────────────
 
     public function user(): BelongsTo
     {
@@ -68,7 +69,7 @@ class Document extends Model
         return $this->belongsTo(Folder::class);
     }
 
-    public function documentCategory(): BelongsTo // RENAMED from category() to documentCategory()
+    public function documentCategory(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
@@ -78,73 +79,20 @@ class Document extends Model
         return $this->belongsTo(User::class, 'employee_id');
     }
 
-    // Accessors for formatted values
-    public function getFileSizeFormattedAttribute()
+    // ── Status accessor ───────────────────────────────────────────────────────
+    //
+    // IMPORTANT: accept $value so the stored DB value is respected.
+    // Only fall back to expiry-date logic when nothing is stored.
+    //
+    public function getStatusAttribute($value)
     {
-        $size = $this->file_size;
-        if ($size >= 1073741824) {
-            return number_format($size / 1073741824, 2) . ' GB';
-        } elseif ($size >= 1048576) {
-            return number_format($size / 1048576, 2) . ' MB';
-        } elseif ($size >= 1024) {
-            return number_format($size / 1024, 2) . ' KB';
-        } else {
-            return $size . ' bytes';
+        // If a status is explicitly stored (draft, pending, approved, active, etc.)
+        // return it as-is so budget/donor documents keep their real status.
+        if (!empty($value)) {
+            return $value;
         }
-    }
 
-    public function getContractTypeFormattedAttribute()
-    {
-        return match($this->contract_type) {
-            'permanent' => 'Permanent',
-            'fixed_term' => 'Fixed Term',
-            'consultancy' => 'Consultancy',
-            'internship' => 'Internship',
-            default => 'Unknown'
-        };
-    }
-
-    public function getBudgetTypeFormattedAttribute()
-    {
-        return match($this->budget_type) {
-            'operational' => 'Operational Budget',
-            'program' => 'Program Budget',
-            'capital' => 'Capital Budget',
-            'proposal' => 'Proposal Budget',
-            default => 'Other'
-        };
-    }
-
-    public function getDepartmentFormattedAttribute()
-    {
-        return match($this->department) {
-            'hr' => 'Human Resources',
-            'finance' => 'Finance',
-            'programs' => 'Programs',
-            'procurement' => 'Procurement',
-            'admin' => 'Administration',
-            'general' => 'General',
-            default => 'Unknown'
-        };
-    }
-
-    public function getDocumentTypeFormattedAttribute()
-    {
-        return match($this->document_type) {
-            'staff_contract' => 'Staff Contract',
-            'donor_contract' => 'Donor Contract',
-            'budget' => 'Budget',
-            'policy' => 'Policy',
-            'report' => 'Report',
-            'proposal' => 'Proposal',
-            'agreement' => 'Agreement',
-            'other' => 'Other',
-            default => 'Unknown'
-        };
-    }
-
-    public function getStatusAttribute()
-    {
+        // Fallback: derive status from expiry_date for legacy rows without a stored status.
         if (!$this->expiry_date) {
             return 'active';
         }
@@ -160,11 +108,99 @@ class Document extends Model
         return 'active';
     }
 
+    // ── Accessors ─────────────────────────────────────────────────────────────
+
+    public function getFileSizeFormattedAttribute()
+    {
+        $size = (int) $this->file_size;
+
+        if ($size >= 1073741824) {
+            return number_format($size / 1073741824, 2) . ' GB';
+        } elseif ($size >= 1048576) {
+            return number_format($size / 1048576, 2) . ' MB';
+        } elseif ($size >= 1024) {
+            return number_format($size / 1024, 2) . ' KB';
+        }
+
+        return $size . ' bytes';
+    }
+
+    public function getFileExtensionAttribute()
+    {
+        if ($this->file_path) {
+            return strtoupper(pathinfo($this->file_path, PATHINFO_EXTENSION));
+        }
+
+        // Budget / reference documents have no physical file; derive from document_type
+        return match ($this->document_type) {
+            'budget'          => 'BUDGET',
+            'donor_contract'  => 'CONTRACT',
+            'staff_contract'  => 'CONTRACT',
+            default           => 'REF',
+        };
+    }
+
+    public function getHasFileAttribute(): bool
+    {
+        return !empty($this->file_path);
+    }
+
+    public function getContractTypeFormattedAttribute()
+    {
+        return match ($this->contract_type) {
+            'permanent'   => 'Permanent',
+            'fixed_term'  => 'Fixed Term',
+            'consultancy' => 'Consultancy',
+            'internship'  => 'Internship',
+            default       => 'Unknown',
+        };
+    }
+
+    public function getBudgetTypeFormattedAttribute()
+    {
+        return match ($this->budget_type) {
+            'operational' => 'Operational Budget',
+            'program'     => 'Program Budget',
+            'capital'     => 'Capital Budget',
+            'proposal'    => 'Proposal Budget',
+            default       => 'Other',
+        };
+    }
+
+    public function getDepartmentFormattedAttribute()
+    {
+        return match ($this->department) {
+            'hr'         => 'Human Resources',
+            'finance'    => 'Finance',
+            'programs'   => 'Programs',
+            'procurement'=> 'Procurement',
+            'admin'      => 'Administration',
+            'general'    => 'General',
+            default      => 'Unknown',
+        };
+    }
+
+    public function getDocumentTypeFormattedAttribute()
+    {
+        return match ($this->document_type) {
+            'staff_contract'  => 'Staff Contract',
+            'donor_contract'  => 'Donor Contract',
+            'budget'          => 'Budget',
+            'policy'          => 'Policy',
+            'report'          => 'Report',
+            'proposal'        => 'Proposal',
+            'agreement'       => 'Agreement',
+            'other'           => 'Other',
+            default           => 'Unknown',
+        };
+    }
+
     public function getContractValueFormattedAttribute()
     {
         if ($this->contract_value && $this->currency) {
             return $this->currency . ' ' . number_format($this->contract_value, 2);
         }
+
         return 'N/A';
     }
 
@@ -173,10 +209,10 @@ class Document extends Model
         if ($this->total_amount && $this->currency) {
             return $this->currency . ' ' . number_format($this->total_amount, 2);
         }
+
         return 'N/A';
     }
 
-    // Add accessor for category name
     public function getCategoryNameAttribute()
     {
         return $this->documentCategory ? $this->documentCategory->name : 'Uncategorized';

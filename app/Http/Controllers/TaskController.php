@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\CalendarEvent;
+use App\Models\WeeklyTaskPlan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,27 @@ class TaskController extends Controller
 
         $users = User::where('id', '!=', Auth::id())->get();
 
-        return view('tasks.index', compact('tasks', 'users'));
+        // Get weekly task plans for current week
+        $currentWeekStart = now()->startOfWeek();
+        $currentWeekEnd = now()->endOfWeek();
+
+        $weeklyPlans = WeeklyTaskPlan::with('user')
+            ->where('week_start', $currentWeekStart->format('Y-m-d'))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get user's own weekly plan (FIXED: Added this line)
+        $myWeeklyPlan = WeeklyTaskPlan::where('user_id', Auth::id())
+            ->where('week_start', $currentWeekStart->format('Y-m-d'))
+            ->first();
+
+        // Get pending tasks for the week
+        $pendingTasksCount = Task::where('assigned_to', Auth::id())
+            ->where('status', '!=', 'completed')
+            ->count();
+
+        // Pass $myWeeklyPlan to the view (FIXED: Added $myWeeklyPlan to compact)
+        return view('tasks.index', compact('tasks', 'users', 'weeklyPlans', 'pendingTasksCount', 'currentWeekStart', 'currentWeekEnd', 'myWeeklyPlan'));
     }
 
     public function dashboard()
@@ -60,13 +81,28 @@ class TaskController extends Controller
         // All users for assigning tasks
         $users = User::where('id', '!=', Auth::id())->get();
 
+        // Get all weekly plans for supervisor view
+        $currentWeekStart = now()->startOfWeek();
+        $allWeeklyPlans = WeeklyTaskPlan::with('user')
+            ->where('week_start', $currentWeekStart->format('Y-m-d'))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get user's own weekly plan
+        $myWeeklyPlan = WeeklyTaskPlan::where('user_id', Auth::id())
+            ->where('week_start', $currentWeekStart->format('Y-m-d'))
+            ->first();
+
         return view('dashboard', compact(
             'taskStats',
             'pendingTasks',
             'users',
             'todayMeetings',
             'upcomingMeetings',
-            'user'
+            'user',
+            'allWeeklyPlans',
+            'myWeeklyPlan',
+            'currentWeekStart'
         ));
     }
 
@@ -228,5 +264,80 @@ class TaskController extends Controller
 
         Log::info('Quick complete successful');
         return response()->json(['success' => true]);
+    }
+
+    // NEW METHODS FOR WEEKLY PLANNING
+
+    public function storeWeeklyPlan(Request $request)
+    {
+        $request->validate([
+            'planned_tasks' => 'required|array|min:1',
+            'planned_tasks.*' => 'string|max:500',
+            'week_start' => 'required|date'
+        ]);
+
+        $weekStart = $request->week_start;
+
+        // Check if user already has a plan for this week
+        $existingPlan = WeeklyTaskPlan::where('user_id', Auth::id())
+            ->where('week_start', $weekStart)
+            ->first();
+
+        if ($existingPlan) {
+            return redirect()->back()->with('error', 'You already have a weekly plan for this week. You can edit it instead.');
+        }
+
+        WeeklyTaskPlan::create([
+            'user_id' => Auth::id(),
+            'week_start' => $weekStart,
+            'planned_tasks' => $request->planned_tasks,
+            'status' => 'planned'
+        ]);
+
+        return redirect()->back()->with('success', 'Weekly plan submitted successfully! Supervisors can now see your planned tasks.');
+    }
+
+    public function updateWeeklyPlan(Request $request, WeeklyTaskPlan $weeklyPlan)
+    {
+        // Only the plan owner can update
+        if ($weeklyPlan->user_id !== Auth::id()) {
+            return redirect()->back()->with('error', 'Unauthorized to update this plan.');
+        }
+
+        $request->validate([
+            'planned_tasks' => 'required|array|min:1',
+            'planned_tasks.*' => 'string|max:500',
+        ]);
+
+        $weeklyPlan->update([
+            'planned_tasks' => $request->planned_tasks,
+            'updated_at' => now()
+        ]);
+
+        return redirect()->back()->with('success', 'Weekly plan updated successfully!');
+    }
+
+    public function getWeeklyPlan($userId = null)
+    {
+        $weekStart = request()->get('week_start', now()->startOfWeek()->format('Y-m-d'));
+        $targetUserId = $userId ?? Auth::id();
+
+        $plan = WeeklyTaskPlan::where('user_id', $targetUserId)
+            ->where('week_start', $weekStart)
+            ->first();
+
+        return response()->json($plan);
+    }
+
+    public function getAllWeeklyPlans()
+    {
+        $weekStart = request()->get('week_start', now()->startOfWeek()->format('Y-m-d'));
+
+        $plans = WeeklyTaskPlan::with('user')
+            ->where('week_start', $weekStart)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($plans);
     }
 }

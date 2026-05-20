@@ -4,67 +4,64 @@ namespace App\Http\Controllers;
 
 use App\Models\Budget;
 use App\Models\BudgetItem;
+use App\Models\Document;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BudgetController extends Controller
 {
-    /**
-     * Display a listing of the resource (Dashboard).
-     */
-    public function index()
+    public function index(Request $request)
     {
         $this->authorizeAccess();
 
-        // Get all budgets with createdBy relationship
-        $budgets = Budget::with('createdBy')->latest()->get();
+        $query = Budget::with('createdBy')->latest();
 
-        // Calculate dashboard statistics
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        $budgets    = $query->get();
+        $allBudgets = Budget::all();
+
+        $totalExpensesAll = \App\Models\Expense::whereIn('status', ['approved', 'paid'])->sum('amount_zmw');
+
         $stats = [
-            'total_budgets' => $budgets->count(),
-            'total_amount_zmw' => $budgets->sum('total_budget_zmw'),
-            'total_amount_usd' => $budgets->sum('total_budget_usd'),
-            'draft_count' => $budgets->where('status', 'draft')->count(),
-            'approved_count' => $budgets->where('status', 'approved')->count(),
-            'pending_count' => $budgets->where('status', 'pending')->count(),
+            'total_budgets'    => $allBudgets->count(),
+            'total_amount_zmw' => $allBudgets->sum('total_budget_zmw'),
+            'total_amount_usd' => $allBudgets->sum('total_budget_usd'),
+            'draft_count'      => $allBudgets->where('status', 'draft')->count(),
+            'approved_count'   => $allBudgets->where('status', 'approved')->count(),
+            'pending_count'    => $allBudgets->where('status', 'pending')->count(),
         ];
 
-        // Recent budgets (last 5)
-        $recentBudgets = $budgets->take(5);
-
-        // Budgets by status for chart
         $statusDistribution = [
-            'draft' => $budgets->where('status', 'draft')->count(),
-            'approved' => $budgets->where('status', 'approved')->count(),
-            'pending' => $budgets->where('status', 'pending')->count(),
+            'draft'    => $allBudgets->where('status', 'draft')->count(),
+            'approved' => $allBudgets->where('status', 'approved')->count(),
+            'pending'  => $allBudgets->where('status', 'pending')->count(),
         ];
 
         return view('budgets.index', [
-            'title' => 'Budget Management Dashboard',
-            'budgets' => $budgets,
-            'recentBudgets' => $recentBudgets,
-            'stats' => $stats,
+            'title'              => 'Budget Management',
+            'budgets'            => $budgets,
+            'stats'              => $stats,
+            'totalExpensesAll'   => $totalExpensesAll,
             'statusDistribution' => $statusDistribution,
-            'user' => Auth::user(),
+            'user'               => Auth::user(),
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $this->authorizeAccess();
         return view('budgets.create', [
             'title' => 'Create New Detailed Budget',
-            'user' => Auth::user(),
+            'user'  => Auth::user(),
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $this->authorizeAccess();
@@ -72,67 +69,60 @@ class BudgetController extends Controller
         DB::beginTransaction();
 
         try {
-            // Validate basic budget information
             $validated = $request->validate([
-                'project_title' => 'required|string|max:255',
-                'project_goal' => 'required|string',
-                'project_code' => 'required|string|max:50|unique:budgets,project_code',
-                'contact_person' => 'required|string|max:255',
-                'contact_email' => 'required|email|max:255',
-                'contact_phone' => 'required|string|max:20',
-                'duration' => 'required|string|max:100',
-                'exchange_rate' => 'required|numeric|min:0',
+                'project_title'    => 'required|string|max:255',
+                'project_goal'     => 'required|string',
+                'project_code'     => 'required|string|max:50|unique:budgets,project_code',
+                'contact_person'   => 'required|string|max:255',
+                'contact_email'    => 'required|email|max:255',
+                'contact_phone'    => 'required|string|max:20',
+                'duration'         => 'required|string|max:100',
+                'exchange_rate'    => 'required|numeric|min:0',
                 'total_budget_zmw' => 'required|numeric|min:0',
                 'total_budget_usd' => 'required|numeric|min:0',
-                'status' => 'required|in:draft,pending,approved',
+                'status'           => 'required|in:draft,pending,approved',
+                'sections'         => 'nullable|array',
             ]);
 
-            // Add user information
             $validated['created_by'] = Auth::id();
             $validated['updated_by'] = Auth::id();
 
-            // Create the main budget
             $budget = Budget::create($validated);
 
-            // Process budget items if provided
-            if ($request->has('budget_items')) {
-                $this->processBudgetItems($budget, $request->budget_items);
+            if ($request->has('sections') && is_array($request->sections)) {
+                $this->processBudgetData($budget, $request->sections);
             }
 
             DB::commit();
+
+            // ── Save document AFTER commit so a document failure never
+            //    rolls back the budget itself. ────────────────────────
+            $this->saveBudgetAsDocument($budget);
 
             return redirect()->route('budgets.show', $budget->id)
                 ->with('success', 'Budget created successfully!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return redirect()->back()
-                ->withInput()
+            Log::error('Error creating budget: ' . $e->getMessage());
+            return redirect()->back()->withInput()
                 ->with('error', 'Error creating budget: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Display the specified resource with detailed breakdown.
-     */
     public function show($id)
     {
         $this->authorizeAccess();
 
-        // Eager load all relationships
         $budget = Budget::with([
-            'items' => function($query) {
-                $query->orderBy('sort_order');
-            },
+            'items'    => fn($q) => $q->orderBy('sort_order'),
             'createdBy',
-            'updatedBy'
+            'updatedBy',
+            'expenses' => fn($q) => $q->orderBy('expense_date', 'desc'),
         ])->findOrFail($id);
 
-        // Group items by section for display
         $groupedItems = $budget->items->groupBy('section');
 
-        // Calculate section totals
         $sectionTotals = [];
         foreach ($groupedItems as $section => $items) {
             $sectionTotals[$section] = [
@@ -141,49 +131,42 @@ class BudgetController extends Controller
             ];
         }
 
-        // Calculate summary statistics
-        $summary = [
-            'core_program' => $budget->items->where('section', 'A - CORE PROGRAM EXPENDITURE')->sum('total_amount_zmw'),
-            'institutional_support' => $budget->items->where('section', 'B - INSTITUTIONAL SUPPORT EXPENDITURE')->sum('total_amount_zmw'),
-            'contingency' => $budget->items->where('section', 'C - CONTINGENCY')->sum('total_amount_zmw'),
-        ];
+        $expenses = $budget->expenses()
+            ->with(['createdBy', 'approvedBy'])
+            ->orderBy('expense_date', 'desc')
+            ->get();
+
+        $expensesByCategory = $budget->expenses()
+            ->whereIn('status', ['approved', 'paid'])
+            ->select('category', DB::raw('SUM(amount_zmw) as total'))
+            ->groupBy('category')
+            ->get();
 
         return view('budgets.show', [
-            'title' => 'Detailed Budget - ' . $budget->project_code,
-            'budget' => $budget,
-            'groupedItems' => $groupedItems,
-            'sectionTotals' => $sectionTotals,
-            'summary' => $summary,
-            'user' => Auth::user(),
+            'title'              => 'Detailed Budget - ' . $budget->project_code,
+            'budget'             => $budget,
+            'groupedItems'       => $groupedItems,
+            'sectionTotals'      => $sectionTotals,
+            'expenses'           => $expenses,
+            'expensesByCategory' => $expensesByCategory,
+            'user'               => Auth::user(),
         ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit($id)
     {
         $this->authorizeAccess();
 
-        // Load budget with items ordered by sort_order
-        $budget = Budget::with(['items' => function($query) {
-            $query->orderBy('sort_order');
-        }])->findOrFail($id);
-
-        // Group items by section for easier editing
-        $groupedItems = $budget->items->groupBy('section');
+        $budget = Budget::with(['items' => fn($q) => $q->orderBy('sort_order')])
+            ->findOrFail($id);
 
         return view('budgets.edit', [
-            'title' => 'Edit Budget - ' . $budget->project_code,
+            'title'  => 'Edit Budget - ' . $budget->project_code,
             'budget' => $budget,
-            'groupedItems' => $groupedItems,
-            'user' => Auth::user(),
+            'user'   => Auth::user(),
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id)
     {
         $this->authorizeAccess();
@@ -193,52 +176,45 @@ class BudgetController extends Controller
         try {
             $budget = Budget::findOrFail($id);
 
-            // Validate basic budget information
             $validated = $request->validate([
-                'project_title' => 'required|string|max:255',
-                'project_goal' => 'required|string',
-                'project_code' => 'required|string|max:50|unique:budgets,project_code,' . $id,
-                'contact_person' => 'required|string|max:255',
-                'contact_email' => 'required|email|max:255',
-                'contact_phone' => 'required|string|max:20',
-                'duration' => 'required|string|max:100',
-                'exchange_rate' => 'required|numeric|min:0',
+                'project_title'    => 'required|string|max:255',
+                'project_goal'     => 'required|string',
+                'project_code'     => 'required|string|max:50|unique:budgets,project_code,' . $id,
+                'contact_person'   => 'required|string|max:255',
+                'contact_email'    => 'required|email|max:255',
+                'contact_phone'    => 'required|string|max:20',
+                'duration'         => 'required|string|max:100',
+                'exchange_rate'    => 'required|numeric|min:0',
                 'total_budget_zmw' => 'required|numeric|min:0',
                 'total_budget_usd' => 'required|numeric|min:0',
-                'status' => 'required|in:draft,pending,approved',
+                'status'           => 'required|in:draft,pending,approved',
+                'sections'         => 'nullable|array',
             ]);
 
-            // Update user information
             $validated['updated_by'] = Auth::id();
-
-            // Update the budget
             $budget->update($validated);
-
-            // Delete existing items
             $budget->items()->delete();
 
-            // Process new budget items if provided
-            if ($request->has('budget_items')) {
-                $this->processBudgetItems($budget, $request->budget_items);
+            if ($request->has('sections') && is_array($request->sections)) {
+                $this->processBudgetData($budget, $request->sections);
             }
 
             DB::commit();
+
+            // Update document after commit
+            $this->updateBudgetDocument($budget);
 
             return redirect()->route('budgets.show', $budget->id)
                 ->with('success', 'Budget updated successfully!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return redirect()->back()
-                ->withInput()
+            Log::error('Error updating budget: ' . $e->getMessage());
+            return redirect()->back()->withInput()
                 ->with('error', 'Error updating budget: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
         $this->authorizeAccess();
@@ -248,10 +224,16 @@ class BudgetController extends Controller
         try {
             $budget = Budget::findOrFail($id);
 
-            // Delete all associated items first
-            $budget->items()->delete();
+            if ($budget->expenses()->count() > 0) {
+                return redirect()->back()
+                    ->with('error', 'Cannot delete budget with existing expenses. Please delete expenses first.');
+            }
 
-            // Delete the budget
+            Document::where('reference_number', $budget->project_code)
+                ->where('document_type', 'budget')
+                ->delete();
+
+            $budget->items()->delete();
             $budget->delete();
 
             DB::commit();
@@ -261,35 +243,217 @@ class BudgetController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-
             return redirect()->back()
                 ->with('error', 'Error deleting budget: ' . $e->getMessage());
         }
     }
 
+    // ── Document helpers ──────────────────────────────────────────────────────
+
     /**
-     * Export budget to PDF.
+     * Save budget as a document record.
+     * Called OUTSIDE any open transaction so failures are isolated.
      */
+    private function saveBudgetAsDocument(Budget $budget): void
+    {
+        try {
+            Log::info('[Budget->Doc] Starting for: ' . $budget->project_code);
+
+            // Get or create the Budgets category
+            $category = Category::firstOrCreate(
+                ['name' => 'Budgets'],
+                [
+                    'description' => 'Project budgets and financial documents',
+                    'slug'        => 'budgets',
+                    'is_active'   => true,
+                ]
+            );
+
+            Log::info('[Budget->Doc] Category ID: ' . $category->id);
+
+            // Remove any stale duplicate first
+            Document::where('reference_number', $budget->project_code)
+                ->where('document_type', 'budget')
+                ->delete();
+
+            $doc = Document::create([
+                'title'            => $budget->project_title,
+                'description'      => $budget->project_goal,
+                'file_name'        => $budget->project_code . '.pdf',
+                'file_path'        => null,   // reference doc — no physical file
+                'file_size'        => 0,
+                'file_type'        => 'application/pdf',
+                'department'       => 'finance',
+                'document_type'    => 'budget',
+                'reference_number' => $budget->project_code,
+                'status'           => $budget->status,
+                'version'          => '1.0',
+                'created_by'       => Auth::id(),
+                'category_id'      => $category->id,
+                'folder_id'        => null,   // show directly in category, no sub-folder
+                'fiscal_year'      => date('Y'),
+                'budget_type'      => 'proposal',
+                'total_amount'     => $budget->total_budget_zmw,
+                'currency'         => 'ZMW',
+                'effective_date'   => now()->toDateString(),
+                'is_public'        => false,
+                'is_active'        => true,
+            ]);
+
+            Log::info('[Budget->Doc] Created document ID: ' . $doc->id
+                . ' | category_id: ' . $doc->category_id
+                . ' | folder_id: ' . ($doc->folder_id ?? 'NULL'));
+
+        } catch (\Exception $e) {
+            // Never block the budget save — just log
+            Log::error('[Budget->Doc] FAILED for ' . $budget->project_code . ': ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+        }
+    }
+
+    /**
+     * Update existing budget document, or create it if missing.
+     * Called OUTSIDE any open transaction.
+     */
+    private function updateBudgetDocument(Budget $budget): void
+    {
+        try {
+            $category = Category::firstOrCreate(
+                ['name' => 'Budgets'],
+                [
+                    'description' => 'Project budgets and financial documents',
+                    'slug'        => 'budgets',
+                    'is_active'   => true,
+                ]
+            );
+
+            $document = Document::where('reference_number', $budget->project_code)
+                ->where('document_type', 'budget')
+                ->first();
+
+            if ($document) {
+                $document->update([
+                    'title'        => $budget->project_title,
+                    'description'  => $budget->project_goal,
+                    'status'       => $budget->status,
+                    'total_amount' => $budget->total_budget_zmw,
+                    'category_id'  => $category->id,
+                    'folder_id'    => null,
+                ]);
+                Log::info('[Budget->Doc] Updated document ID: ' . $document->id);
+            } else {
+                $this->saveBudgetAsDocument($budget);
+            }
+        } catch (\Exception $e) {
+            Log::error('[Budget->Doc] Update FAILED: ' . $e->getMessage());
+        }
+    }
+
+    // ── Budget data processing ────────────────────────────────────────────────
+
+    private function processBudgetData(Budget $budget, array $sections): void
+    {
+        $sortOrder = 0;
+
+        foreach ($sections as $sectionData) {
+            $sectionName = $sectionData['name'] ?? 'Unnamed Section';
+
+            if (!isset($sectionData['objectives']) || !is_array($sectionData['objectives'])) {
+                continue;
+            }
+
+            foreach ($sectionData['objectives'] as $objectiveData) {
+                $objectiveDescription = $objectiveData['description'] ?? '';
+
+                if (!isset($objectiveData['activities']) || !is_array($objectiveData['activities'])) {
+                    continue;
+                }
+
+                foreach ($objectiveData['activities'] as $activityData) {
+                    $activityDescription = $activityData['description'] ?? '';
+
+                    if (!isset($activityData['items']) || !is_array($activityData['items'])) {
+                        continue;
+                    }
+
+                    foreach ($activityData['items'] as $itemData) {
+                        // Skip completely empty rows
+                        if (empty($itemData['description']) && empty($itemData['cost'])
+                            && (empty($itemData['calculated_total']) || $itemData['calculated_total'] == 0)) {
+                            continue;
+                        }
+
+                        $unitCost  = floatval($itemData['unit_cost']  ?? 0);
+                        $number    = intval($itemData['number']    ?? 1);
+                        $frequency = intval($itemData['frequency'] ?? 1);
+                        $unit      = intval($itemData['unit']      ?? 1);
+                        $currency  = $itemData['currency'] ?? 'ZMW';
+
+                        $calculatedTotal = $number * $frequency * $unit * $unitCost;
+
+                        $year1 = floatval($itemData['year_1'] ?? 0);
+                        $year2 = floatval($itemData['year_2'] ?? 0);
+                        $year3 = floatval($itemData['year_3'] ?? 0);
+
+                        if ($year1 == 0 && $year2 == 0 && $year3 == 0 && $calculatedTotal > 0) {
+                            $equalShare = $calculatedTotal / 3;
+                            $year1 = round($equalShare, 2);
+                            $year2 = round($equalShare, 2);
+                            $year3 = round($equalShare, 2);
+                        }
+
+                        $exchangeRateItem = floatval($itemData['exchange_rate_item'] ?? $budget->exchange_rate);
+
+                        $totalZMW = $currency === 'ZMW'
+                            ? $calculatedTotal
+                            : $calculatedTotal * $exchangeRateItem;
+
+                        $totalUSD = $budget->exchange_rate > 0
+                            ? $totalZMW / $budget->exchange_rate
+                            : 0;
+
+                        BudgetItem::create([
+                            'budget_id'          => $budget->id,
+                            'section'            => $sectionName,
+                            'objective'          => $objectiveDescription,
+                            'activity'           => $activityDescription,
+                            'description'        => $itemData['description'] ?? '',
+                            'cost'               => $itemData['cost'] ?? '',
+                            'number'             => $number,
+                            'frequency'          => $frequency,
+                            'unit'               => $unit,
+                            'unit_cost'          => $unitCost,
+                            'currency'           => $currency,
+                            'exchange_rate_item' => $currency !== 'ZMW' ? $exchangeRateItem : null,
+                            'calculated_total'   => $calculatedTotal,
+                            'total_amount_zmw'   => $totalZMW,
+                            'total_amount_usd'   => $totalUSD,
+                            'year_1'             => $year1,
+                            'year_2'             => $year2,
+                            'year_3'             => $year3,
+                            'note'               => $itemData['note'] ?? '',
+                            'sort_order'         => $sortOrder++,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $budget->updateTotals();
+    }
+
+    // ── Other actions ─────────────────────────────────────────────────────────
+
     public function exportPdf($id)
     {
         $this->authorizeAccess();
 
-        $budget = Budget::with(['items' => function($query) {
-            $query->orderBy('sort_order');
-        }])->findOrFail($id);
+        $budget = Budget::with(['items' => fn($q) => $q->orderBy('sort_order')])
+            ->findOrFail($id);
 
-        // You would typically use a PDF library here
-        // For now, we'll return a view that can be printed
-
-        return view('budgets.pdf', [
-            'budget' => $budget,
-            'groupedItems' => $budget->items->groupBy('section'),
-        ]);
+        return view('budgets.pdf', compact('budget'));
     }
 
-    /**
-     * Duplicate/Copy an existing budget.
-     */
     public function duplicate($id)
     {
         $this->authorizeAccess();
@@ -299,170 +463,124 @@ class BudgetController extends Controller
         try {
             $original = Budget::with('items')->findOrFail($id);
 
-            // Create new budget based on original
-            $newBudget = $original->replicate();
-            $newBudget->project_code = $original->project_code . '-COPY-' . time();
-            $newBudget->status = 'draft';
-            $newBudget->created_by = Auth::id();
-            $newBudget->updated_by = Auth::id();
-            $newBudget->created_at = now();
-            $newBudget->updated_at = now();
+            $newBudget                = $original->replicate();
+            $newBudget->project_code  = $original->project_code . '-COPY-' . time();
+            $newBudget->status        = 'draft';
+            $newBudget->created_by    = Auth::id();
+            $newBudget->updated_by    = Auth::id();
+            $newBudget->created_at    = now();
+            $newBudget->updated_at    = now();
             $newBudget->save();
 
-            // Duplicate all items
             foreach ($original->items as $item) {
-                $newItem = $item->replicate();
+                $newItem            = $item->replicate();
                 $newItem->budget_id = $newBudget->id;
                 $newItem->save();
             }
 
             DB::commit();
 
+            // Create document after commit
+            $this->saveBudgetAsDocument($newBudget);
+
             return redirect()->route('budgets.edit', $newBudget->id)
-                ->with('success', 'Budget duplicated successfully!');
+                ->with('success', 'Budget duplicated successfully! Please update the project code and other details.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-
             return redirect()->back()
                 ->with('error', 'Error duplicating budget: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Change budget status.
-     */
     public function changeStatus(Request $request, $id)
     {
         $this->authorizeAccess();
 
-        $request->validate([
-            'status' => 'required|in:draft,pending,approved',
-        ]);
+        $request->validate(['status' => 'required|in:draft,pending,approved']);
 
         $budget = Budget::findOrFail($id);
         $budget->update([
-            'status' => $request->status,
+            'status'     => $request->status,
             'updated_by' => Auth::id(),
         ]);
+
+        Document::where('reference_number', $budget->project_code)
+            ->where('document_type', 'budget')
+            ->update(['status' => $request->status]);
 
         return redirect()->back()
             ->with('success', 'Budget status updated to ' . ucfirst($request->status));
     }
 
-    /**
-     * Process budget items from request.
-     */
-    private function processBudgetItems(Budget $budget, array $itemsData)
-    {
-        foreach ($itemsData as $itemData) {
-            // Skip empty rows
-            if (empty($itemData['description_cost_item']) && empty($itemData['description_cost_category'])) {
-                continue;
-            }
-
-            $budget->items()->create([
-                'section' => $itemData['section'] ?? null,
-                'objective' => $itemData['objective'] ?? null,
-                'activity' => $itemData['activity'] ?? null,
-                'component' => $itemData['component'] ?? null,
-                'description_cost_category' => $itemData['description_cost_category'] ?? null,
-                'description_cost_item' => $itemData['description_cost_item'] ?? null,
-                'number' => $itemData['number'] ?? 1,
-                'frequency' => $itemData['frequency'] ?? '',
-                'unit' => $itemData['unit'] ?? '',
-                'unit_cost' => $itemData['unit_cost'] ?? 0,
-                'total_amount_zmw' => $itemData['total_amount_zmw'] ?? 0,
-                'total_amount_usd' => $itemData['total_amount_usd'] ?? 0,
-                'revised_year_1' => $itemData['revised_year_1'] ?? null,
-                'revised_year_2' => $itemData['revised_year_2'] ?? null,
-                'revised_year_3' => $itemData['revised_year_3'] ?? null,
-                'comments' => $itemData['comments'] ?? null,
-                'sort_order' => $itemData['sort_order'] ?? 0,
-            ]);
-        }
-    }
-
-    /**
-     * Get budget statistics for dashboard.
-     */
     public function getStatistics()
     {
         $this->authorizeAccess();
 
-        $stats = [
-            'total_budgets' => Budget::count(),
+        return response()->json([
+            'total_budgets'    => Budget::count(),
             'total_amount_zmw' => Budget::sum('total_budget_zmw'),
             'total_amount_usd' => Budget::sum('total_budget_usd'),
-            'draft_count' => Budget::where('status', 'draft')->count(),
-            'approved_count' => Budget::where('status', 'approved')->count(),
-            'pending_count' => Budget::where('status', 'pending')->count(),
-        ];
-
-        return response()->json($stats);
+            'draft_count'      => Budget::where('status', 'draft')->count(),
+            'approved_count'   => Budget::where('status', 'approved')->count(),
+            'pending_count'    => Budget::where('status', 'pending')->count(),
+        ]);
     }
 
-    /**
-     * Get budgets by status for chart.
-     */
     public function getStatusData()
     {
         $this->authorizeAccess();
 
-        $data = [
-            'draft' => Budget::where('status', 'draft')->count(),
+        return response()->json([
+            'draft'    => Budget::where('status', 'draft')->count(),
             'approved' => Budget::where('status', 'approved')->count(),
-            'pending' => Budget::where('status', 'pending')->count(),
-        ];
-
-        return response()->json($data);
+            'pending'  => Budget::where('status', 'pending')->count(),
+        ]);
     }
 
-    /**
-     * Search/filter budgets.
-     */
     public function search(Request $request)
     {
         $this->authorizeAccess();
 
         $query = Budget::query();
 
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('project_title', 'like', "%{$search}%")
+            $query->where(function ($q) use ($search) {
+                $q->where('project_title',  'like', "%{$search}%")
                   ->orWhere('project_code', 'like', "%{$search}%")
                   ->orWhere('project_goal', 'like', "%{$search}%")
                   ->orWhere('contact_person', 'like', "%{$search}%");
             });
         }
 
-        if ($request->has('status') && $request->status !== 'all') {
+        if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
         }
 
-        if ($request->has('year')) {
+        if ($request->filled('year')) {
             $query->whereYear('created_at', $request->year);
         }
 
         $budgets = $query->with('createdBy')->latest()->get();
 
-        return view('budgets.partials.budget_table', [
-            'budgets' => $budgets,
-        ]);
+        if ($request->ajax()) {
+            return view('budgets.partials.budget_table', compact('budgets'));
+        }
+
+        return redirect()->route('budgets.index');
     }
 
-    /**
-     * Authorization check for budget access.
-     */
-    private function authorizeAccess()
+    // ── Authorization ─────────────────────────────────────────────────────────
+
+    private function authorizeAccess(): void
     {
         $user = Auth::user();
 
-        $allowed = $user->role === 'system_admin' ||
-                  $user->department === 'Finance and Admin' ||
-                  $user->position === 'Executive Director' ||
-                  $user->position === 'Fundraising and Partnership Manager';
+        $allowed = $user->role === 'system_admin'
+            || $user->department === 'Finance and Admin'
+            || $user->position === 'Executive Director'
+            || $user->position === 'Fundraising and Partnership Manager';
 
         if (!$allowed) {
             abort(403, 'Unauthorized access to budgets.');

@@ -1,187 +1,239 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Budget Management Dashboard</h1>
-        <a href="{{ route('budgets.create') }}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> Create New Budget
+<div class="container-fluid px-4">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h4 class="mb-1" style="font-weight:600; color:#000;">Budgets</h4>
+            <p class="text-muted small mb-0">Manage and track all project budgets</p>
+        </div>
+        <a href="{{ route('budgets.create') }}" style="background:#000; color:#fff; border:none; border-radius:4px; padding:8px 16px; text-decoration:none; font-size:0.85rem;">
+            + New Budget
         </a>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="row">
-        <!-- Total Budgets Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Budgets</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_budgets'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-wallet2 fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div style="border:1px solid #ddd; border-radius:4px; padding:14px;">
+                <div style="font-size:0.7rem; color:#999; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Total Budgets</div>
+                <div style="font-size:1.6rem; font-weight:700; color:#000;">{{ $stats['total_budgets'] }}</div>
             </div>
         </div>
-
-        <!-- Total Amount (ZMW) Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Total Amount (ZMW)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ZMW {{ number_format($stats['total_amount_zmw'], 2) }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-currency-exchange fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="col-md-3">
+            <div style="border:1px solid #ddd; border-radius:4px; padding:14px;">
+                <div style="font-size:0.7rem; color:#999; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Total Budget (ZMW)</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#28a745;">ZMW {{ number_format($stats['total_amount_zmw'], 0) }}</div>
             </div>
         </div>
-
-        <!-- Total Amount (USD) Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total Amount (USD)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                ${{ number_format($stats['total_amount_usd'], 2) }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-currency-dollar fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="col-md-3">
+            <div style="border:1px solid #ddd; border-radius:4px; padding:14px;">
+                <div style="font-size:0.7rem; color:#999; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Total Expenses (ZMW)</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#000;">ZMW {{ number_format($totalExpensesAll ?? 0, 0) }}</div>
             </div>
         </div>
-
-        <!-- Approved Budgets Card -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Approved Budgets</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $stats['approved_count'] }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+        <div class="col-md-3">
+            <div style="border:1px solid #ddd; border-radius:4px; padding:14px;">
+                <div style="font-size:0.7rem; color:#999; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">Approved</div>
+                <div style="font-size:1.6rem; font-weight:700; color:#28a745;">{{ $stats['approved_count'] }}</div>
             </div>
         </div>
     </div>
 
-    <!-- Filters and Search -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Filter Budgets</h6>
+    <!-- Filters -->
+    <div class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input type="text" id="searchInput" class="form-control"
+                   placeholder="Search by title, code, or contact..."
+                   style="font-size:0.85rem; border:1px solid #ddd; border-radius:4px;">
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <input type="text" class="form-control" id="searchInput" placeholder="Search by title, code, or contact...">
-                </div>
-                <div class="col-md-3 mb-3">
-                    <select class="form-control" id="statusFilter">
-                        <option value="all">All Status</option>
-                        <option value="draft">Draft</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <select class="form-control" id="yearFilter">
-                        <option value="all">All Years</option>
-                        @foreach(range(date('Y'), date('Y')-3) as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2 mb-3">
-                    <button class="btn btn-primary btn-block" onclick="filterBudgets()">
-                        <i class="bi bi-search"></i> Search
-                    </button>
-                </div>
-            </div>
+        <div class="col-md-3">
+            <select id="statusFilter" class="form-select" style="font-size:0.85rem; border:1px solid #ddd; border-radius:4px;">
+                <option value="all">All Status</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="draft">Draft</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="sortBy" class="form-select" style="font-size:0.85rem; border:1px solid #ddd; border-radius:4px;">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="amount_high">Highest Amount</option>
+                <option value="amount_low">Lowest Amount</option>
+                <option value="title_asc">Title A-Z</option>
+                <option value="title_desc">Title Z-A</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button onclick="resetFilters()" style="width:100%; padding:6px 12px; border:1px solid #ddd; background:#fff; border-radius:4px; font-size:0.85rem; cursor:pointer;">
+                Reset
+            </button>
         </div>
     </div>
 
-    <!-- Budgets Table -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold text-primary">All Budgets</h6>
-            <span class="badge bg-secondary">{{ $budgets->count() }} total</span>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive" id="budgetsTableContainer">
-                @include('budgets.partials.budget_table', ['budgets' => $budgets])
-            </div>
-        </div>
+    <!-- Table -->
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.82rem;">
+            <thead>
+                <tr style="background:#f2f2f2;">
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap;">Project Code</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:left; font-weight:600;">Project Title</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:right; font-weight:600; white-space:nowrap;">Budget (ZMW)</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:right; font-weight:600; white-space:nowrap;">Expenses (ZMW)</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:center; font-weight:600;">Utilization</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:left; font-weight:600;">Contact</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:center; font-weight:600;">Status</th>
+                    <th style="border:1px solid #bbb; padding:10px 12px; text-align:center; font-weight:600;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="budgetsTableBody">
+                @forelse($budgets as $budget)
+                @php
+                    $totalExpenses = $budget->expenses()->whereIn('status', ['approved', 'paid'])->sum('amount_zmw');
+                    $percentUsed = $budget->total_budget_zmw > 0 ? ($totalExpenses / $budget->total_budget_zmw) * 100 : 0;
+                    $statusColor = $budget->status == 'approved' ? '#28a745' : ($budget->status == 'pending' ? '#e6a817' : '#6c757d');
+                    $barColor = $percentUsed > 90 ? '#dc3545' : ($percentUsed > 70 ? '#ffc107' : '#28a745');
+                @endphp
+                <tr class="budget-row"
+                    data-status="{{ $budget->status }}"
+                    data-title="{{ strtolower($budget->project_title) }}"
+                    data-code="{{ strtolower($budget->project_code) }}"
+                    data-contact="{{ strtolower($budget->contact_person) }}"
+                    data-amount="{{ $budget->total_budget_zmw }}"
+                    data-created="{{ $budget->created_at }}"
+                    style="background:#fff;">
+                    <td style="border:1px solid #ddd; padding:10px 12px; font-weight:600; white-space:nowrap;">
+                        <a href="{{ route('budgets.show', $budget->id) }}" style="color:#000; text-decoration:none;">
+                            {{ $budget->project_code }}
+                        </a>
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px;">
+                        <div style="font-weight:500;">{{ Str::limit($budget->project_title, 55) }}</div>
+                        <div style="font-size:0.72rem; color:#888; margin-top:2px;">{{ $budget->duration }}</div>
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px; text-align:right; color:#28a745; font-weight:600; white-space:nowrap;">
+                        {{ number_format($budget->total_budget_zmw, 2) }}
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px; text-align:right; white-space:nowrap;">
+                        {{ number_format($totalExpenses, 2) }}
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px; text-align:center; min-width:110px;">
+                        <div style="background:#e9e9e9; height:5px; border-radius:2px; margin-bottom:4px;">
+                            <div style="width:{{ min($percentUsed, 100) }}%; height:5px; background:{{ $barColor }}; border-radius:2px;"></div>
+                        </div>
+                        <span style="font-size:0.72rem; color:#555;">{{ number_format($percentUsed, 1) }}% used</span>
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px;">
+                        <div>{{ $budget->contact_person }}</div>
+                        <div style="font-size:0.72rem; color:#888; margin-top:2px;">{{ $budget->contact_email }}</div>
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px; text-align:center;">
+                        <span style="color:{{ $statusColor }}; font-weight:600; font-size:0.8rem;">
+                            {{ ucfirst($budget->status) }}
+                        </span>
+                    </td>
+                    <td style="border:1px solid #ddd; padding:10px 12px; text-align:center; white-space:nowrap;">
+                        <a href="{{ route('budgets.show', $budget->id) }}" style="color:#000; text-decoration:none; margin-right:10px; font-size:0.8rem;">View</a>
+                        <a href="{{ route('budgets.edit', $budget->id) }}" style="color:#28a745; text-decoration:none; margin-right:10px; font-size:0.8rem;">Edit</a>
+                        <button onclick="deleteBudget({{ $budget->id }}, '{{ $budget->project_code }}')"
+                                style="color:#dc3545; background:none; border:none; cursor:pointer; font-size:0.8rem; padding:0;">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="8" style="border:1px solid #ddd; padding:40px; text-align:center; color:#888;">
+                        No budgets found.
+                        <a href="{{ route('budgets.create') }}" style="color:#000; font-weight:600; margin-left:8px;">+ New Budget</a>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
+
+    <!-- Pagination -->
+    @if($budgets instanceof \Illuminate\Pagination\LengthAwarePaginator && $budgets->hasPages())
+    <div class="d-flex justify-content-center mt-3">
+        {{ $budgets->links() }}
+    </div>
+    @endif
+
 </div>
-@endsection
 
-@push('scripts')
+<!-- Delete Form -->
+<form id="deleteForm" action="" method="POST" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
+
+<style>
+.budget-row:hover { background:#f7f7f7 !important; }
+.form-control:focus, .form-select:focus { border-color:#000; box-shadow:none; outline:none; }
+</style>
+
 <script>
-function filterBudgets() {
-    const search = document.getElementById('searchInput').value;
-    const status = document.getElementById('statusFilter').value;
-    const year = document.getElementById('yearFilter').value;
+const searchInput  = document.getElementById('searchInput');
+const statusFilter = document.getElementById('statusFilter');
+const sortBy       = document.getElementById('sortBy');
+const tableBody    = document.getElementById('budgetsTableBody');
+let allRows = Array.from(document.querySelectorAll('.budget-row'));
 
-    fetch(`{{ route('budgets.search') }}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ search, status, year })
-    })
-    .then(response => response.text())
-    .then(html => {
-        document.getElementById('budgetsTableContainer').innerHTML = html;
-    })
-    .catch(error => console.error('Error:', error));
+function filterBudgets() {
+    const search = searchInput.value.toLowerCase();
+    const status = statusFilter.value;
+    const sort   = sortBy.value;
+
+    let rows = allRows.filter(row => {
+        const matchSearch = !search ||
+            (row.dataset.title   || '').includes(search) ||
+            (row.dataset.code    || '').includes(search) ||
+            (row.dataset.contact || '').includes(search);
+        const matchStatus = status === 'all' || row.dataset.status === status;
+        return matchSearch && matchStatus;
+    });
+
+    rows.sort((a, b) => {
+        if (sort === 'newest')      return new Date(b.dataset.created) - new Date(a.dataset.created);
+        if (sort === 'oldest')      return new Date(a.dataset.created) - new Date(b.dataset.created);
+        if (sort === 'amount_high') return parseFloat(b.dataset.amount) - parseFloat(a.dataset.amount);
+        if (sort === 'amount_low')  return parseFloat(a.dataset.amount) - parseFloat(b.dataset.amount);
+        if (sort === 'title_asc')   return (a.dataset.title || '').localeCompare(b.dataset.title || '');
+        if (sort === 'title_desc')  return (b.dataset.title || '').localeCompare(a.dataset.title || '');
+        return 0;
+    });
+
+    tableBody.innerHTML = '';
+    if (rows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" style="border:1px solid #ddd; padding:40px; text-align:center; color:#888;">No matching budgets found.</td></tr>';
+    } else {
+        rows.forEach(r => tableBody.appendChild(r));
+    }
 }
 
-// Auto-search on input (with debounce)
-let searchTimeout;
-document.getElementById('searchInput').addEventListener('keyup', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(filterBudgets, 500);
-});
+function resetFilters() {
+    searchInput.value  = '';
+    statusFilter.value = 'all';
+    sortBy.value       = 'newest';
+    filterBudgets();
+}
 
-document.getElementById('statusFilter').addEventListener('change', filterBudgets);
-document.getElementById('yearFilter').addEventListener('change', filterBudgets);
+searchInput.addEventListener('input', filterBudgets);
+statusFilter.addEventListener('change', filterBudgets);
+sortBy.addEventListener('change', filterBudgets);
+
+function deleteBudget(id, code) {
+    if (confirm(`Delete budget ${code}? This cannot be undone.`)) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/budgets/${id}`;
+        form.submit();
+    }
+}
+
+filterBudgets();
 </script>
-@endpush
-
-@push('styles')
-<style>
-.border-left-primary { border-left: 4px solid #4e73df; }
-.border-left-success { border-left: 4px solid #1cc88a; }
-.border-left-info { border-left: 4px solid #36b9cc; }
-.border-left-warning { border-left: 4px solid #f6c23e; }
-
-.fa-2x { font-size: 2rem; }
-</style>
-@endpush
+@endsection

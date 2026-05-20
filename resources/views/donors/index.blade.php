@@ -53,6 +53,19 @@
     color: #198754;
     line-height: 1.2;
 }
+.consultant-section {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 2px solid rgba(25, 135, 84, 0.2);
+}
+.section-title {
+    color: #198754;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #198754;
+    display: inline-block;
+}
 @media (max-width: 768px) {
     .stat-card {
         min-height: 150px;
@@ -85,6 +98,9 @@
                             <a href="{{ route('donors.create') }}" class="btn btn-outline-success hover-brighten">
                                 <i class="bi bi-plus-circle me-1"></i> Add New Donor
                             </a>
+                            <a href="{{ route('consultants.index') }}" class="btn btn-info hover-brighten" style="background-color: #198754; border-color: #198754;">
+                                <i class="bi bi-people me-1"></i> Manage Consultants
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -109,7 +125,7 @@
                 <div class="col-xl-4 col-md-4 mb-4">
                     <div class="stat-card text-center p-4">
                         <div class="stat-value">{{ $totalDonors }}</div>
-                        <div class="stat-label">Total Donors</div>
+                        <div class="stat-label">Total Grants</div>
                     </div>
                 </div>
 
@@ -124,6 +140,33 @@
                     <div class="stat-card text-center p-4">
                         <div class="stat-value">{{ $activeContracts }}</div>
                         <div class="stat-label">Active Contracts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consultants Section -->
+            <div class="consultant-section">
+                <div class="row">
+                    <div class="col-12">
+                        <h5 class="section-title">
+                            <i class="bi bi-people-fill me-2"></i>Consultants Overview
+                        </h5>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="stat-card text-center p-4">
+                            <div class="stat-value">{{ $totalConsultants ?? 0 }}</div>
+                            <div class="stat-label">Total Consultants</div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="stat-card text-center p-4">
+                            <div class="stat-value">{{ $activeConsultants ?? 0 }}</div>
+                            <div class="stat-label">Active Consultants</div>
+                        </div>
                     </div>
                 </div>
             </div>

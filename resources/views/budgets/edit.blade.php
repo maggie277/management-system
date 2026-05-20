@@ -1,395 +1,267 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Edit Budget: {{ $budget->project_code }}</h1>
-        <div class="btn-group">
-            <a href="{{ route('budgets.show', $budget->id) }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back to View
+<div class="container-fluid px-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h4 class="mb-1" style="color: #000; font-weight: 600;">Edit Budget: {{ $budget->project_code }}</h4>
+            <p class="text-muted small mb-0">{{ $budget->project_title }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('budgets.show', $budget->id) }}" class="btn btn-outline-dark btn-sm" style="border-radius: 20px;">
+                <i class="bi bi-eye me-1"></i> View
             </a>
-            <a href="{{ route('budgets.index') }}" class="btn btn-outline-primary">
-                <i class="bi bi-grid me-1"></i> Dashboard
+            <a href="{{ route('budgets.index') }}" class="btn btn-dark btn-sm" style="border-radius: 20px; background: #000; border: none;">
+                <i class="bi bi-arrow-left me-1"></i> Back
             </a>
         </div>
     </div>
 
-    <form action="{{ route('budgets.update', $budget->id) }}" method="POST" id="budgetForm">
+    @if ($errors->any())
+    <div class="alert alert-danger border-0 shadow-sm" style="border-radius: 8px; font-size: 0.85rem;">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    @php
+        // Check if editing is allowed
+        $canEdit = false;
+        $editRestrictionMessage = '';
+
+        $isAdmin = auth()->user()->isAdmin();
+        $isManagement = auth()->user()->isManagement();
+
+        if ($budget->status == 'approved') {
+            if ($isAdmin) {
+                $canEdit = true;
+                $editRestrictionMessage = 'You are editing an approved budget as administrator.';
+            } else {
+                $editRestrictionMessage = 'This budget has been approved and cannot be edited. Only administrators can modify approved budgets.';
+            }
+        } elseif ($budget->status == 'draft') {
+            $canEdit = true;
+        } elseif ($budget->status == 'pending') {
+            if ($isAdmin || $isManagement) {
+                $canEdit = true;
+                $editRestrictionMessage = 'You are editing a pending budget with management privileges.';
+            } else {
+                $pendingDays = $budget->updated_at->diffInDays(now());
+                if ($pendingDays < 7) {
+                    $canEdit = true;
+                    $editRestrictionMessage = 'You can edit this pending budget within 7 days of last update. Remaining: ' . (7 - $pendingDays) . ' days.';
+                } else {
+                    $editRestrictionMessage = 'This pending budget is over 7 days old and can no longer be edited. Please contact management.';
+                }
+            }
+        }
+
+        $currenciesUsed = $budget->items->pluck('currency')->unique()->filter(function($curr) { return $curr != 'ZMW'; })->values();
+        $mainCurrency = $currenciesUsed->first() ?? 'USD';
+    @endphp
+
+    @if(!$canEdit)
+    <div class="alert alert-warning border-0 shadow-sm mb-4" style="border-radius: 8px;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 1.5rem;"></i>
+            <div>
+                <strong>Editing Restricted</strong><br>
+                {{ $editRestrictionMessage }}
+                @if($budget->status == 'approved')
+                    <a href="{{ route('budgets.show', $budget->id) }}" class="alert-link">View budget details</a>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <form action="{{ route('budgets.update', $budget->id) }}" method="POST" id="budgetForm" @if(!$canEdit) onsubmit="return false;" @endif>
         @csrf
         @method('PUT')
 
-        <!-- Basic Information Card -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-primary text-white py-3">
-                <h6 class="m-0 font-weight-bold">Basic Budget Information</h6>
+        <!-- Basic Information -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3" style="border-radius: 8px 8px 0 0;">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Basic Information</h6>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="project_title" class="form-label">Project Title *</label>
-                        <input type="text" class="form-control" id="project_title" name="project_title"
-                               value="{{ old('project_title', $budget->project_title) }}" required>
+            <div class="card-body pt-0">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold" style="color: #333;">Project Title *</label>
+                        <input type="text" class="form-control form-control-sm @error('project_title') is-invalid @enderror"
+                               name="project_title" value="{{ old('project_title', $budget->project_title) }}"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                               @if(!$canEdit) readonly disabled @endif>
+                        @error('project_title')<div class="invalid-feedback small">{{ $message }}</div>@enderror
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="project_code" class="form-label">Project Code *</label>
-                        <input type="text" class="form-control" id="project_code" name="project_code"
-                               value="{{ old('project_code', $budget->project_code) }}" required>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold" style="color: #333;">Project Code *</label>
+                        <input type="text" class="form-control form-control-sm @error('project_code') is-invalid @enderror"
+                               name="project_code" value="{{ old('project_code', $budget->project_code) }}"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                               @if(!$canEdit) readonly disabled @endif>
+                        @error('project_code')<div class="invalid-feedback small">{{ $message }}</div>@enderror
                     </div>
-                    <div class="col-12 mb-3">
-                        <label for="project_goal" class="form-label">Project Goal/Objective *</label>
-                        <textarea class="form-control" id="project_goal" name="project_goal" rows="3" required>{{ old('project_goal', $budget->project_goal) }}</textarea>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold" style="color: #333;">Project Goal/Objective *</label>
+                        <textarea class="form-control form-control-sm @error('project_goal') is-invalid @enderror"
+                                  name="project_goal" rows="2"
+                                  style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                                  @if(!$canEdit) readonly disabled @endif>{{ old('project_goal', $budget->project_goal) }}</textarea>
+                        @error('project_goal')<div class="invalid-feedback small">{{ $message }}</div>@enderror
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="duration" class="form-label">Duration *</label>
-                        <input type="text" class="form-control" id="duration" name="duration"
-                               value="{{ old('duration', $budget->duration) }}" required>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Duration *</label>
+                        <input type="text" class="form-control form-control-sm @error('duration') is-invalid @enderror"
+                               name="duration" value="{{ old('duration', $budget->duration) }}"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                               @if(!$canEdit) readonly disabled @endif>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="exchange_rate" class="form-label">Exchange Rate (1 USD = ZMW) *</label>
-                        <input type="number" class="form-control" id="exchange_rate" name="exchange_rate"
-                               step="0.01" value="{{ old('exchange_rate', $budget->exchange_rate) }}" required>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Exchange Rate (to ZMW) *</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="border-radius: 6px 0 0 6px; background: #f8f8f8; border: 1px solid #ddd; font-size: 0.75rem;">1 {{ $mainCurrency }}/EUR/GBP =</span>
+                            <input type="number" class="form-control form-control-sm @error('exchange_rate') is-invalid @enderror"
+                                   name="exchange_rate" id="exchange_rate" step="0.01" value="{{ old('exchange_rate', $budget->exchange_rate) }}"
+                                   style="border-radius: 0 6px 6px 0; border: 1px solid #ddd; padding: 8px 12px;"
+                                   @if(!$canEdit) readonly disabled @endif>
+                            <span class="input-group-text" style="border-radius: 0 6px 6px 0; background: #f8f8f8;">ZMW</span>
+                        </div>
+                        <small class="text-muted">Exchange rate for USD, EUR, GBP to ZMW</small>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="status" class="form-label">Status *</label>
-                        <select class="form-control" id="status" name="status" required>
-                            <option value="draft" {{ $budget->status == 'draft' ? 'selected' : '' }}>Draft</option>
-                            <option value="pending" {{ $budget->status == 'pending' ? 'selected' : '' }}>Pending Review</option>
-                            <option value="approved" {{ $budget->status == 'approved' ? 'selected' : '' }}>Approved</option>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Status *</label>
+                        <select class="form-select form-select-sm @error('status') is-invalid @enderror" name="status"
+                                style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                                @if(!$canEdit) disabled @endif>
+                            <option value="draft" {{ old('status', $budget->status) == 'draft' ? 'selected' : '' }}>Draft</option>
+                            <option value="pending" {{ old('status', $budget->status) == 'pending' ? 'selected' : '' }}>Pending Review</option>
+                            <option value="approved" {{ old('status', $budget->status) == 'approved' ? 'selected' : '' }}>Approved</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="total_budget_zmw" class="form-label">Total Budget (ZMW) *</label>
-                        <input type="number" class="form-control" id="total_budget_zmw" name="total_budget_zmw"
-                               step="0.01" value="{{ old('total_budget_zmw', $budget->total_budget_zmw) }}" required readonly>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="total_budget_usd" class="form-label">Total Budget (USD) *</label>
-                        <input type="number" class="form-control" id="total_budget_usd" name="total_budget_usd"
-                               step="0.01" value="{{ old('total_budget_usd', $budget->total_budget_usd) }}" required readonly>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Contact Information Card -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-info text-white py-3">
-                <h6 class="m-0 font-weight-bold">Contact Information</h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="contact_person" class="form-label">Contact Person *</label>
-                        <input type="text" class="form-control" id="contact_person" name="contact_person"
-                               value="{{ old('contact_person', $budget->contact_person) }}" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="contact_email" class="form-label">Contact Email *</label>
-                        <input type="email" class="form-control" id="contact_email" name="contact_email"
-                               value="{{ old('contact_email', $budget->contact_email) }}" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="contact_phone" class="form-label">Contact Phone *</label>
-                        <input type="text" class="form-control" id="contact_phone" name="contact_phone"
-                               value="{{ old('contact_phone', $budget->contact_phone) }}" required>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Detailed Budget Items Card -->
-        <div class="card shadow mb-4">
-            <div class="card-header bg-success text-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold">Detailed Budget Breakdown</h6>
-                <div>
-                    <button type="button" class="btn btn-light btn-sm" onclick="addSection('A - CORE PROGRAM EXPENDITURE')">
-                        <i class="bi bi-plus-circle me-1"></i> Add Core Program
-                    </button>
-                    <button type="button" class="btn btn-light btn-sm" onclick="addSection('B - INSTITUTIONAL SUPPORT EXPENDITURE')">
-                        <i class="bi bi-plus-circle me-1"></i> Add Institutional Support
-                    </button>
-                    <button type="button" class="btn btn-light btn-sm" onclick="addSection('C - CONTINGENCY')">
-                        <i class="bi bi-plus-circle me-1"></i> Add Contingency
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div id="budgetItemsContainer">
-                    <!-- Template for budget item -->
-                    <div class="budget-item-template d-none">
-                        <div class="card mb-3 budget-item-card">
-                            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                                <div>
-                                    <select class="form-select form-select-sm section-select" style="width: auto; display: inline-block;">
-                                        <option value="A - CORE PROGRAM EXPENDITURE">A - CORE PROGRAM EXPENDITURE</option>
-                                        <option value="B - INSTITUTIONAL SUPPORT EXPENDITURE">B - INSTITUTIONAL SUPPORT EXPENDITURE</option>
-                                        <option value="C - CONTINGENCY">C - CONTINGENCY</option>
-                                    </select>
-                                </div>
-                                <button type="button" class="btn btn-danger btn-sm remove-item">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div class="row mb-2">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Objective</label>
-                                        <input type="text" class="form-control objective"
-                                               placeholder="e.g., OBJECTIVE 1: To strengthen technical and institutional capacity...">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Activity</label>
-                                        <input type="text" class="form-control activity"
-                                               placeholder="e.g., ACTIVITY 1.1: Conduct the Quarterly review monitoring and evaluation process">
-                                    </div>
-                                </div>
-
-                                <div class="row mb-2">
-                                    <div class="col-md-3">
-                                        <label class="form-label">Component</label>
-                                        <input type="text" class="form-control component"
-                                               placeholder="e.g., Civil Society Institutional Support">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label">Description Cost Category</label>
-                                        <input type="text" class="form-control description_cost_category"
-                                               placeholder="e.g., Civil Society Institutional Support">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label">Description Cost Item</label>
-                                        <input type="text" class="form-control description_cost_item"
-                                               placeholder="e.g., Venue and Conference">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label">Comments</label>
-                                        <input type="text" class="form-control comments"
-                                               placeholder="e.g., Venue and conference at K450 per person for 22 persons...">
-                                    </div>
-                                </div>
-
-                                <div class="row mb-2">
-                                    <div class="col-md-2">
-                                        <label class="form-label">Number</label>
-                                        <input type="number" class="form-control number" value="1" min="1">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Frequency</label>
-                                        <input type="text" class="form-control frequency" placeholder="e.g., 8">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Unit</label>
-                                        <input type="text" class="form-control unit" placeholder="e.g., Quarter">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Unit Cost (ZMW)</label>
-                                        <input type="number" class="form-control unit_cost" step="0.01" value="0">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Total ZMW</label>
-                                        <input type="number" class="form-control total_amount_zmw" step="0.01" readonly>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Total USD</label>
-                                        <input type="number" class="form-control total_amount_usd" step="0.01" readonly>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Revised Year 1</label>
-                                        <input type="number" class="form-control revised_year_1" step="0.01">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Revised Year 2</label>
-                                        <input type="number" class="form-control revised_year_2" step="0.01">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Revised Year 3</label>
-                                        <input type="number" class="form-control revised_year_3" step="0.01">
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold" style="color: #333;">Total Budget (ZMW)</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text" style="border-radius: 6px 0 0 6px; background: #28a745; color: #fff; border: none; font-size: 0.75rem;">ZMW</span>
+                            <input type="text" class="form-control form-control-sm" id="total_budget_zmw_display" readonly
+                                   value="{{ number_format($budget->total_budget_zmw, 2) }}"
+                                   style="border-radius: 0 6px 6px 0; border: 1px solid #ddd; background: #f8f8f8; font-weight: 600;">
                         </div>
                     </div>
-
-                    <!-- Existing items will be loaded here -->
-                    @foreach($groupedItems as $section => $items)
-                        @foreach($items as $index => $item)
-                            <div class="card mb-3 budget-item-card">
-                                <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <select class="form-select form-select-sm section-select" style="width: auto; display: inline-block;">
-                                            <option value="A - CORE PROGRAM EXPENDITURE" {{ $item->section == 'A - CORE PROGRAM EXPENDITURE' ? 'selected' : '' }}>A - CORE PROGRAM EXPENDITURE</option>
-                                            <option value="B - INSTITUTIONAL SUPPORT EXPENDITURE" {{ $item->section == 'B - INSTITUTIONAL SUPPORT EXPENDITURE' ? 'selected' : '' }}>B - INSTITUTIONAL SUPPORT EXPENDITURE</option>
-                                            <option value="C - CONTINGENCY" {{ $item->section == 'C - CONTINGENCY' ? 'selected' : '' }}>C - CONTINGENCY</option>
-                                        </select>
-                                    </div>
-                                    <button type="button" class="btn btn-danger btn-sm remove-item">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row mb-2">
-                                        <div class="col-md-6">
-                                            <label class="form-label">Objective</label>
-                                            <input type="text" class="form-control objective"
-                                                   value="{{ $item->objective }}"
-                                                   placeholder="e.g., OBJECTIVE 1: To strengthen technical and institutional capacity...">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">Activity</label>
-                                            <input type="text" class="form-control activity"
-                                                   value="{{ $item->activity }}"
-                                                   placeholder="e.g., ACTIVITY 1.1: Conduct the Quarterly review monitoring and evaluation process">
-                                        </div>
-                                    </div>
-
-                                    <div class="row mb-2">
-                                        <div class="col-md-3">
-                                            <label class="form-label">Component</label>
-                                            <input type="text" class="form-control component"
-                                                   value="{{ $item->component }}"
-                                                   placeholder="e.g., Civil Society Institutional Support">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">Description Cost Category</label>
-                                            <input type="text" class="form-control description_cost_category"
-                                                   value="{{ $item->description_cost_category }}"
-                                                   placeholder="e.g., Civil Society Institutional Support">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">Description Cost Item</label>
-                                            <input type="text" class="form-control description_cost_item"
-                                                   value="{{ $item->description_cost_item }}"
-                                                   placeholder="e.g., Venue and Conference">
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">Comments</label>
-                                            <input type="text" class="form-control comments"
-                                                   value="{{ $item->comments }}"
-                                                   placeholder="e.g., Venue and conference at K450 per person for 22 persons...">
-                                        </div>
-                                    </div>
-
-                                    <div class="row mb-2">
-                                        <div class="col-md-2">
-                                            <label class="form-label">Number</label>
-                                            <input type="number" class="form-control number"
-                                                   value="{{ $item->number }}" min="1">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label">Frequency</label>
-                                            <input type="text" class="form-control frequency"
-                                                   value="{{ $item->frequency }}" placeholder="e.g., 8">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label">Unit</label>
-                                            <input type="text" class="form-control unit"
-                                                   value="{{ $item->unit }}" placeholder="e.g., Quarter">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label">Unit Cost (ZMW)</label>
-                                            <input type="number" class="form-control unit_cost"
-                                                   value="{{ $item->unit_cost }}" step="0.01">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label">Total ZMW</label>
-                                            <input type="number" class="form-control total_amount_zmw"
-                                                   value="{{ $item->total_amount_zmw }}" step="0.01" readonly>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label">Total USD</label>
-                                            <input type="number" class="form-control total_amount_usd"
-                                                   value="{{ $item->total_amount_usd }}" step="0.01" readonly>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <label class="form-label">Revised Year 1</label>
-                                            <input type="number" class="form-control revised_year_1"
-                                                   value="{{ $item->revised_year_1 }}" step="0.01">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">Revised Year 2</label>
-                                            <input type="number" class="form-control revised_year_2"
-                                                   value="{{ $item->revised_year_2 }}" step="0.01">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label">Revised Year 3</label>
-                                            <input type="number" class="form-control revised_year_3"
-                                                   value="{{ $item->revised_year_3 }}" step="0.01">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    @endforeach
                 </div>
+            </div>
+        </div>
 
-                @if($budget->items->isEmpty())
-                <!-- Empty state -->
-                <div id="emptyState" class="text-center py-4">
-                    <i class="bi bi-table display-1 text-muted mb-3"></i>
-                    <h5 class="text-muted">No budget items added yet</h5>
-                    <p class="text-muted">Click the buttons above to add budget sections</p>
+        <!-- Contact Information -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Contact Information</h6>
+            </div>
+            <div class="card-body pt-0">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold" style="color: #333;">Contact Person *</label>
+                        <input type="text" class="form-control form-control-sm @error('contact_person') is-invalid @enderror"
+                               name="contact_person" value="{{ old('contact_person', $budget->contact_person) }}"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                               @if(!$canEdit) readonly disabled @endif>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold" style="color: #333;">Email *</label>
+                        <input type="email" class="form-control form-control-sm @error('contact_email') is-invalid @enderror"
+                               name="contact_email" value="{{ old('contact_email', $budget->contact_email) }}"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                               @if(!$canEdit) readonly disabled @endif>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold" style="color: #333;">Phone *</label>
+                        <input type="text" class="form-control form-control-sm @error('contact_phone') is-invalid @enderror"
+                               name="contact_phone" value="{{ old('contact_phone', $budget->contact_phone) }}"
+                               style="border-radius: 6px; border: 1px solid #ddd; padding: 8px 12px;"
+                               @if(!$canEdit) readonly disabled @endif>
+                    </div>
                 </div>
-                @else
-                <div id="emptyState" class="text-center py-4 d-none">
-                    <i class="bi bi-table display-1 text-muted mb-3"></i>
-                    <h5 class="text-muted">No budget items added yet</h5>
-                    <p class="text-muted">Click the buttons above to add budget sections</p>
-                </div>
+            </div>
+        </div>
+
+        <!-- Budget Breakdown -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Budget Breakdown</h6>
+                @if($canEdit)
+                <button type="button" class="btn btn-dark btn-sm" onclick="addSection()" style="border-radius: 20px; padding: 5px 14px; font-size: 0.75rem;">
+                    <i class="bi bi-plus-lg me-1"></i> Add Section
+                </button>
                 @endif
+            </div>
+            <div class="card-body pt-0 p-2">
+                <div id="sections-container"></div>
+            </div>
+        </div>
 
-                <!-- Summary Section -->
-                <div class="card mt-4">
-                    <div class="card-header bg-warning">
-                        <h6 class="m-0 font-weight-bold">Budget Summary</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <h6>Core Program Expenditure</h6>
-                                <div class="h4 text-success" id="coreProgramTotal">
-                                    ZMW {{ number_format($budget->items->where('section', 'A - CORE PROGRAM EXPENDITURE')->sum('total_amount_zmw'), 2) }}
-                                </div>
-                                <small class="text-muted" id="coreProgramTotalUsd">
-                                    ${{ number_format($budget->items->where('section', 'A - CORE PROGRAM EXPENDITURE')->sum('total_amount_usd'), 2) }}
-                                </small>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>Institutional Support</h6>
-                                <div class="h4 text-primary" id="institutionalSupportTotal">
-                                    ZMW {{ number_format($budget->items->where('section', 'B - INSTITUTIONAL SUPPORT EXPENDITURE')->sum('total_amount_zmw'), 2) }}
-                                </div>
-                                <small class="text-muted" id="institutionalSupportTotalUsd">
-                                    ${{ number_format($budget->items->where('section', 'B - INSTITUTIONAL SUPPORT EXPENDITURE')->sum('total_amount_usd'), 2) }}
-                                </small>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>Contingency</h6>
-                                <div class="h4 text-info" id="contingencyTotal">
-                                    ZMW {{ number_format($budget->items->where('section', 'C - CONTINGENCY')->sum('total_amount_zmw'), 2) }}
-                                </div>
-                                <small class="text-muted" id="contingencyTotalUsd">
-                                    ${{ number_format($budget->items->where('section', 'C - CONTINGENCY')->sum('total_amount_usd'), 2) }}
-                                </small>
+        <!-- Summary -->
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 8px;">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="mb-0" style="color: #000; font-weight: 600; font-size: 0.9rem;">Budget Summary</h6>
+            </div>
+            <div class="card-body pt-0">
+                <div class="row" id="summary-container">
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total Budget</small>
+                                <h5 class="mb-0 text-success" id="summary-zmw">ZMW 0.00</h5>
                             </div>
                         </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-12">
-                                <h4 class="text-center">GRAND TOTAL:
-                                    <span id="grandTotalZMW">ZMW {{ number_format($budget->total_budget_zmw, 2) }}</span> /
-                                    <span id="grandTotalUSD">${{ number_format($budget->total_budget_usd, 2) }}</span>
-                                </h4>
+                    </div>
+                    <div class="col-md-3 mb-2" id="summary-usd-container" style="display: none;">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total (USD)</small>
+                                <h5 class="mb-0" id="summary-usd">$0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2" id="summary-eur-container" style="display: none;">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total (EUR)</small>
+                                <h5 class="mb-0" id="summary-eur">€0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2" id="summary-gbp-container" style="display: none;">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Total (GBP)</small>
+                                <h5 class="mb-0" id="summary-gbp">£0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Year 1 Total</small>
+                                <h5 class="mb-0" id="summary-y1">0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Year 2 Total</small>
+                                <h5 class="mb-0" id="summary-y2">0.00</h5>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3 text-center">
+                                <small class="text-muted">Year 3 Total</small>
+                                <h5 class="mb-0" id="summary-y3">0.00</h5>
                             </div>
                         </div>
                     </div>
@@ -397,355 +269,491 @@
             </div>
         </div>
 
-        <!-- Hidden fields for storing budget items -->
-        <div id="hiddenFieldsContainer"></div>
+        <input type="hidden" name="total_budget_zmw" id="total_budget_zmw_hidden" value="{{ $budget->total_budget_zmw }}">
+        <input type="hidden" name="total_budget_usd" id="total_budget_usd_hidden" value="{{ $budget->total_budget_usd }}">
 
-        <!-- Action Buttons -->
-        <div class="card shadow">
-            <div class="card-body text-center">
-                <button type="button" class="btn btn-primary btn-lg me-3" onclick="saveBudget()">
-                    <i class="bi bi-save me-2"></i> Update Budget
-                </button>
-                <a href="{{ route('budgets.show', $budget->id) }}" class="btn btn-secondary btn-lg me-3">
-                    <i class="bi bi-x-circle me-2"></i> Cancel
-                </a>
-                <button type="button" class="btn btn-danger btn-lg" onclick="confirmDelete()">
-                    <i class="bi bi-trash me-2"></i> Delete Budget
-                </button>
-            </div>
+        @if($canEdit)
+        <div class="text-center mb-4">
+            <button type="submit" class="btn btn-dark px-4 me-2" id="submitBtn" style="border-radius: 20px; font-size: 0.85rem;">
+                <i class="bi bi-check-lg me-1"></i> Update Budget
+            </button>
+            <a href="{{ route('budgets.show', $budget->id) }}" class="btn btn-outline-dark px-4 me-2" style="border-radius: 20px; font-size: 0.85rem;">
+                Cancel
+            </a>
+            @if($budget->status == 'draft' || $isAdmin)
+            <button type="button" class="btn btn-outline-danger px-4" onclick="confirmDelete()" style="border-radius: 20px; font-size: 0.85rem;">
+                <i class="bi bi-trash me-1"></i> Delete
+            </button>
+            @endif
         </div>
+        @else
+        <div class="text-center mb-4">
+            <a href="{{ route('budgets.show', $budget->id) }}" class="btn btn-outline-dark px-4" style="border-radius: 20px; font-size: 0.85rem;">
+                Back to Budget
+            </a>
+        </div>
+        @endif
     </form>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Confirm Delete</h5>
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 10px; border: none;">
+                <div class="modal-header border-0" style="background: #000; color: #fff; border-radius: 10px 10px 0 0;">
+                    <h6 class="modal-title">Delete Budget</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete this budget?</p>
-                    <p class="text-danger"><strong>Warning:</strong> This action cannot be undone. All budget items will also be deleted.</p>
+                <div class="modal-body text-center py-4">
+                    <p>Delete this budget?</p>
+                    <p class="text-danger small">All budget items will also be deleted.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-outline-dark btn-sm" data-bs-dismiss="modal" style="border-radius: 20px;">Cancel</button>
                     <form action="{{ route('budgets.destroy', $budget->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger">Delete Budget</button>
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-dark btn-sm" style="border-radius: 20px; background: #dc3545; border: none;">Delete</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-@endsection
 
-@push('styles')
-<style>
-.budget-item-card {
-    border-left: 4px solid #28a745;
-}
-.section-a { border-left-color: #28a745; }
-.section-b { border-left-color: #007bff; }
-.section-c { border-left-color: #6c757d; }
-</style>
-@endpush
+<!-- TEMPLATES -->
+<template id="section-template">
+    <div class="section-block mb-3" data-section-id="{sectionId}">
+        <div style="background: #f8f8f8; padding: 10px 14px; border-radius: 6px 6px 0 0; border: 1px solid #eee;">
+            <div class="row align-items-center g-2">
+                <div class="col-md-8">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text" style="background: #000; color: #fff; border: none; font-size: 0.7rem; border-radius: 4px 0 0 4px;">Section</span>
+                        <input type="text" class="form-control section-name" name="sections[{sectionId}][name]"
+                               placeholder="Section name" style="font-weight: 600; font-size: 0.8rem; border-radius: 0 4px 4px 0;" @if(!$canEdit) readonly disabled @endif>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    @if($canEdit)
+                    <button type="button" class="btn btn-outline-dark btn-sm" onclick="addObjective(this)" style="border-radius: 20px; font-size: 0.7rem; padding: 3px 10px;">
+                        <i class="bi bi-plus"></i> Objective
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeSection(this)" style="border-radius: 20px; font-size: 0.7rem; padding: 3px 8px;">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="objectives-container p-2" style="border: 1px solid #eee; border-top: 0; border-radius: 0 0 6px 6px;"></div>
+    </div>
+</template>
 
-@push('scripts')
+<template id="objective-template">
+    <div class="objective-block mb-2 p-2" style="border-left: 3px solid #000; background: #fff; border-radius: 0 4px 4px 0;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="flex-grow-1 me-2">
+                <input type="text" class="form-control form-control-sm objective-text"
+                       name="sections[{sectionId}][objectives][{objectiveId}][description]"
+                       placeholder="Objective description..." style="font-size: 0.75rem; border: 1px solid #ddd;" @if(!$canEdit) readonly disabled @endif>
+            </div>
+            <div class="d-flex gap-1">
+                @if($canEdit)
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="addActivity(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 8px;">
+                    <i class="bi bi-plus"></i> Activity
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeObjective(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 6px;">
+                    <i class="bi bi-trash"></i>
+                </button>
+                @endif
+            </div>
+        </div>
+        <div class="activities-container"></div>
+    </div>
+</template>
+
+<template id="activity-template">
+    <div class="activity-block mb-2 p-2" style="border-left: 3px solid #28a745; background: #f9faf9; border-radius: 0 4px 4px 0;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="flex-grow-1 me-2">
+                <input type="text" class="form-control form-control-sm activity-text"
+                       name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][description]"
+                       placeholder="Activity description..." style="font-size: 0.75rem; border: 1px solid #ddd;" @if(!$canEdit) readonly disabled @endif>
+            </div>
+            <div class="d-flex gap-1">
+                @if($canEdit)
+                <button type="button" class="btn btn-outline-dark btn-sm" onclick="addBudgetLine(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 8px;">
+                    <i class="bi bi-plus"></i> Add Item
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeActivity(this)" style="border-radius: 20px; font-size: 0.65rem; padding: 2px 6px;">
+                    <i class="bi bi-trash"></i>
+                </button>
+                @endif
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered budget-lines-table" style="font-size: 0.7rem; margin: 0;">
+                <thead style="background: #f0f0f0; font-size: 0.65rem;">
+                    <tr>
+                        <th>Description</th>
+                        <th>No.</th>
+                        <th>Freq.</th>
+                        <th>Unit</th>
+                        <th>Cost</th>
+                        <th>Currency</th>
+                        <th>Total (ZMW)</th>
+                        <th>Y1</th>
+                        <th>Y2</th>
+                        <th>Y3</th>
+                        <th>Note</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody class="budget-lines-body"></tbody>
+                <tfoot>
+                    <tr style="font-weight: 600; font-size: 0.7rem; background: #f8f8f8;">
+                        <td colspan="6" class="text-end">Activity Total:</td>
+                        <td class="activity-total text-end">0.00</td>
+                        <td class="activity-total-y1 text-end">0.00</td>
+                        <td class="activity-total-y2 text-end">0.00</td>
+                        <td class="activity-total-y3 text-end">0.00</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</template>
+
+<template id="budget-line-template">
+    <tr class="budget-line-row">
+        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][description]" placeholder="Description" style="font-size:0.7rem; min-width:120px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm number-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][number]" value="1" min="0" step="1" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:60px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm frequency-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][frequency]" value="1" min="0" step="1" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:60px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm unit-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][unit]" value="1" min="0" step="1" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:60px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm unit-cost-input" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][unit_cost]" value="0.00" step="0.01" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:80px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td>
+            <select class="form-control form-control-sm currency-select" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][currency]" onchange="calculateLineTotal(this)" style="font-size:0.7rem; width:70px;" @if(!$canEdit) disabled @endif>
+                <option value="ZMW">ZMW</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+            </select>
+        </td>
+        <td><input type="number" class="form-control form-control-sm total-display" readonly value="0.00" style="font-size:0.7rem; width:90px; background:#f8f8f8;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm year-input year-1" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][year_1]" value="0.00" step="0.01" onchange="updateActivityTotals(this.closest('.activity-block'))" style="font-size:0.7rem; width:70px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm year-input year-2" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][year_2]" value="0.00" step="0.01" onchange="updateActivityTotals(this.closest('.activity-block'))" style="font-size:0.7rem; width:70px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="number" class="form-control form-control-sm year-input year-3" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][year_3]" value="0.00" step="0.01" onchange="updateActivityTotals(this.closest('.activity-block'))" style="font-size:0.7rem; width:70px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td><input type="text" class="form-control form-control-sm" name="sections[{sectionId}][objectives][{objectiveId}][activities][{activityId}][items][{lineId}][note]" placeholder="Note" style="font-size:0.7rem; min-width:100px;" @if(!$canEdit) readonly disabled @endif></td>
+        <td>@if($canEdit)<button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBudgetLine(this)" style="border-radius:50%; padding:1px 5px; font-size:0.6rem;"><i class="bi bi-x"></i></button>@endif</td>
+    </tr>
+</template>
+
 <script>
-let itemCounter = {{ $budget->items->count() }};
+const canEdit = {{ json_encode($canEdit) }};
+const existingBudget = @json($budget);
+const existingItems = @json($budget->items);
+let sectionCounter = 1, objectiveCounter = 0, activityCounter = 0, lineCounter = 0;
 
-// Function to add a new budget item section
-function addSection(sectionType) {
-    const template = document.querySelector('.budget-item-template');
-    const clone = template.cloneNode(true);
-    clone.classList.remove('d-none', 'budget-item-template');
-
-    // Set section
-    const sectionSelect = clone.querySelector('.section-select');
-    sectionSelect.value = sectionType;
-
-    // Update visual indicator based on section
-    updateSectionColor(clone, sectionType);
-
-    // Add event listeners
-    const removeBtn = clone.querySelector('.remove-item');
-    removeBtn.addEventListener('click', function() {
-        clone.remove();
-        updateTotals();
-        checkEmptyState();
+function buildStructuredData(items) {
+    const sections = {};
+    items.forEach(item => {
+        const sn = item.section || 'A - CORE PROGRAM EXPENDITURE';
+        const od = item.objective || '';
+        const ad = item.activity || '';
+        if (!sections[sn]) sections[sn] = { name: sn, objectives: {} };
+        if (!sections[sn].objectives[od]) sections[sn].objectives[od] = { description: od, activities: {} };
+        if (!sections[sn].objectives[od].activities[ad]) sections[sn].objectives[od].activities[ad] = { description: ad, items: [] };
+        sections[sn].objectives[od].activities[ad].items.push({
+            description: item.description || '',
+            number: item.number || 1,
+            frequency: item.frequency || 1,
+            unit: item.unit || 1,
+            unit_cost: item.unit_cost || 0,
+            currency: item.currency || 'ZMW',
+            total_zmw: item.total_amount_zmw || 0,
+            year_1: item.year_1 || 0,
+            year_2: item.year_2 || 0,
+            year_3: item.year_3 || 0,
+            note: item.note || ''
+        });
     });
-
-    // Add calculation listeners
-    const numberInput = clone.querySelector('.number');
-    const frequencyInput = clone.querySelector('.frequency');
-    const unitCostInput = clone.querySelector('.unit_cost');
-    const totalZMWInput = clone.querySelector('.total_amount_zmw');
-    const totalUSDInput = clone.querySelector('.total_amount_usd');
-
-    const calculateTotal = () => {
-        const number = parseFloat(numberInput.value) || 0;
-        const frequency = parseFloat(frequencyInput.value) || 0;
-        const unitCost = parseFloat(unitCostInput.value) || 0;
-        const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25;
-
-        const totalZMW = number * frequency * unitCost;
-        const totalUSD = totalZMW / exchangeRate;
-
-        totalZMWInput.value = totalZMW.toFixed(2);
-        totalUSDInput.value = totalUSD.toFixed(2);
-
-        updateTotals();
-    };
-
-    numberInput.addEventListener('input', calculateTotal);
-    frequencyInput.addEventListener('input', calculateTotal);
-    unitCostInput.addEventListener('input', calculateTotal);
-
-    // Section change listener
-    sectionSelect.addEventListener('change', function() {
-        updateSectionColor(clone, this.value);
-        updateTotals();
-    });
-
-    // Add to container
-    document.getElementById('budgetItemsContainer').appendChild(clone);
-    document.getElementById('emptyState').classList.add('d-none');
-
-    itemCounter++;
-    updateTotals();
+    return sections;
 }
 
-// Function to update section color
-function updateSectionColor(element, section) {
-    element.classList.remove('section-a', 'section-b', 'section-c');
-    if (section === 'A - CORE PROGRAM EXPENDITURE') {
-        element.classList.add('section-a');
-    } else if (section === 'B - INSTITUTIONAL SUPPORT EXPENDITURE') {
-        element.classList.add('section-b');
-    } else {
-        element.classList.add('section-c');
+function renderExistingData() {
+    const container = document.getElementById('sections-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const data = buildStructuredData(existingItems);
+
+    Object.entries(data).forEach(([sn, sd]) => {
+        const sid = sectionCounter++;
+        let sectionHtml = document.getElementById('section-template').innerHTML;
+        sectionHtml = sectionHtml.replace(/{sectionId}/g, sid);
+        container.insertAdjacentHTML('beforeend', sectionHtml);
+        const sectionDiv = container.lastElementChild;
+        const sectionNameInput = sectionDiv.querySelector('.section-name');
+        if (sectionNameInput) sectionNameInput.value = sn;
+
+        const oc = sectionDiv.querySelector('.objectives-container');
+        Object.entries(sd.objectives).forEach(([od, obj]) => {
+            const oid = sid + '_' + objectiveCounter++;
+            let objHtml = document.getElementById('objective-template').innerHTML;
+            objHtml = objHtml.replace(/{sectionId}/g, sid).replace(/{objectiveId}/g, oid);
+            oc.insertAdjacentHTML('beforeend', objHtml);
+            const objDiv = oc.lastElementChild;
+            const objTextInput = objDiv.querySelector('.objective-text');
+            if (objTextInput) objTextInput.value = od;
+
+            const ac = objDiv.querySelector('.activities-container');
+            Object.entries(obj.activities).forEach(([ad, act]) => {
+                const aid = oid + '_' + activityCounter++;
+                let actHtml = document.getElementById('activity-template').innerHTML;
+                actHtml = actHtml.replace(/{sectionId}/g, sid).replace(/{objectiveId}/g, oid).replace(/{activityId}/g, aid);
+                ac.insertAdjacentHTML('beforeend', actHtml);
+                const actDiv = ac.lastElementChild;
+                const actTextInput = actDiv.querySelector('.activity-text');
+                if (actTextInput) actTextInput.value = ad;
+
+                const tb = actDiv.querySelector('.budget-lines-body');
+                act.items.forEach(item => {
+                    const lid = lineCounter++;
+                    let lineHtml = document.getElementById('budget-line-template').innerHTML;
+                    lineHtml = lineHtml.replace(/{sectionId}/g, sid).replace(/{objectiveId}/g, oid).replace(/{activityId}/g, aid).replace(/{lineId}/g, lid);
+                    tb.insertAdjacentHTML('beforeend', lineHtml);
+                    const row = tb.lastElementChild;
+
+                    // Populate values
+                    row.querySelector('input[name*="[description]"]').value = item.description || '';
+                    row.querySelector('.number-input').value = item.number;
+                    row.querySelector('.frequency-input').value = item.frequency;
+                    row.querySelector('.unit-input').value = item.unit;
+                    row.querySelector('.unit-cost-input').value = item.unit_cost;
+                    row.querySelector('.currency-select').value = item.currency;
+                    row.querySelector('.total-display').value = item.total_zmw;
+                    row.querySelector('.year-1').value = item.year_1;
+                    row.querySelector('.year-2').value = item.year_2;
+                    row.querySelector('.year-3').value = item.year_3;
+                    row.querySelector('input[name*="[note]"]').value = item.note || '';
+                });
+                updateActivityTotals(actDiv);
+            });
+        });
+    });
+
+    if (Object.keys(data).length === 0 && canEdit) {
+        addSection();
     }
+    updateAllTotals();
 }
 
-// Update all totals
-function updateTotals() {
-    const items = document.querySelectorAll('#budgetItemsContainer .budget-item-card');
+function addSection() {
+    const container = document.getElementById('sections-container');
+    const template = document.getElementById('section-template');
+    container.insertAdjacentHTML('beforeend', template.innerHTML.replace(/{sectionId}/g, sectionCounter++));
+    updateAllTotals();
+}
+
+function removeSection(btn) {
+    const section = btn.closest('.section-block');
+    if (document.querySelectorAll('.section-block').length > 1) {
+        if (confirm('Delete this section?')) { section.remove(); updateAllTotals(); }
+    } else { alert('At least one section required.'); }
+}
+
+function addObjective(btn) {
+    const section = btn.closest('.section-block');
+    const container = section.querySelector('.objectives-container');
+    const sectionId = section.dataset.sectionId;
+    const objectiveId = sectionId + '_' + objectiveCounter++;
+    container.insertAdjacentHTML('beforeend', document.getElementById('objective-template').innerHTML.replace(/{sectionId}/g, sectionId).replace(/{objectiveId}/g, objectiveId));
+    updateAllTotals();
+}
+
+function removeObjective(btn) {
+    if (confirm('Delete this objective?')) { btn.closest('.objective-block').remove(); updateAllTotals(); }
+}
+
+function addActivity(btn) {
+    const objective = btn.closest('.objective-block');
+    const section = objective.closest('.section-block');
+    const sectionId = section.dataset.sectionId;
+    const objInput = objective.querySelector('.objective-text');
+    const match = objInput.name.match(/sections\[(\d+)\]\[objectives\]\[([^\]]+)\]/);
+    const objectiveId = match ? match[2] : sectionId + '_' + activityCounter;
+    const activityId = objectiveId + '_' + activityCounter++;
+    objective.querySelector('.activities-container').insertAdjacentHTML('beforeend',
+        document.getElementById('activity-template').innerHTML.replace(/{sectionId}/g, sectionId).replace(/{objectiveId}/g, objectiveId).replace(/{activityId}/g, activityId));
+    updateAllTotals();
+}
+
+function removeActivity(btn) {
+    if (confirm('Delete this activity?')) { btn.closest('.activity-block').remove(); updateAllTotals(); }
+}
+
+function addBudgetLine(btn) {
+    const activity = btn.closest('.activity-block');
+    const section = activity.closest('.section-block');
+    const objective = activity.closest('.objective-block');
+    const sectionId = section.dataset.sectionId;
+    const objMatch = objective.querySelector('.objective-text').name.match(/sections\[(\d+)\]\[objectives\]\[([^\]]+)\]/);
+    const actMatch = activity.querySelector('.activity-text').name.match(/activities\]\[([^\]]+)\]/);
+    const objectiveId = objMatch ? objMatch[2] : sectionId + '_obj';
+    const activityId = actMatch ? actMatch[1] : objectiveId + '_act';
+    const lineId = lineCounter++;
+    activity.querySelector('.budget-lines-body').insertAdjacentHTML('beforeend',
+        document.getElementById('budget-line-template').innerHTML.replace(/{sectionId}/g, sectionId).replace(/{objectiveId}/g, objectiveId).replace(/{activityId}/g, activityId).replace(/{lineId}/g, lineId));
+    updateActivityTotals(activity);
+}
+
+function removeBudgetLine(btn) {
+    const activity = btn.closest('.activity-block');
+    btn.closest('tr').remove();
+    updateActivityTotals(activity);
+}
+
+function calculateLineTotal(el) {
+    const row = el.closest('tr');
+    const number = parseFloat(row.querySelector('.number-input').value) || 0;
+    const frequency = parseFloat(row.querySelector('.frequency-input').value) || 0;
+    const unit = parseFloat(row.querySelector('.unit-input').value) || 0;
+    const unitCost = parseFloat(row.querySelector('.unit-cost-input').value) || 0;
+    const currency = row.querySelector('.currency-select').value;
     const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25;
 
-    let coreProgramTotalZMW = 0;
-    let institutionalSupportTotalZMW = 0;
-    let contingencyTotalZMW = 0;
+    const calculatedTotalOriginal = number * frequency * unit * unitCost;
+    let totalInZMW = calculatedTotalOriginal;
+    if (currency !== 'ZMW') {
+        totalInZMW = calculatedTotalOriginal * exchangeRate;
+    }
 
-    items.forEach(item => {
-        const section = item.querySelector('.section-select').value;
-        const totalZMW = parseFloat(item.querySelector('.total_amount_zmw').value) || 0;
+    const totalDisplay = row.querySelector('.total-display');
+    totalDisplay.value = totalInZMW.toFixed(2);
 
-        if (section === 'A - CORE PROGRAM EXPENDITURE') {
-            coreProgramTotalZMW += totalZMW;
-        } else if (section === 'B - INSTITUTIONAL SUPPORT EXPENDITURE') {
-            institutionalSupportTotalZMW += totalZMW;
-        } else if (section === 'C - CONTINGENCY') {
-            contingencyTotalZMW += totalZMW;
-        }
-    });
+    const year1Input = row.querySelector('.year-1');
+    const year2Input = row.querySelector('.year-2');
+    const year3Input = row.querySelector('.year-3');
 
-    const grandTotalZMW = coreProgramTotalZMW + institutionalSupportTotalZMW + contingencyTotalZMW;
-    const grandTotalUSD = grandTotalZMW / exchangeRate;
+    if (year1Input.value == 0 && year2Input.value == 0 && year3Input.value == 0 && totalInZMW > 0) {
+        const equalShare = totalInZMW / 3;
+        year1Input.value = equalShare.toFixed(2);
+        year2Input.value = equalShare.toFixed(2);
+        year3Input.value = equalShare.toFixed(2);
+    }
 
-    // Update display
-    document.getElementById('coreProgramTotal').textContent = `ZMW ${coreProgramTotalZMW.toFixed(2)}`;
-    document.getElementById('coreProgramTotalUsd').textContent = `$${(coreProgramTotalZMW / exchangeRate).toFixed(2)}`;
-
-    document.getElementById('institutionalSupportTotal').textContent = `ZMW ${institutionalSupportTotalZMW.toFixed(2)}`;
-    document.getElementById('institutionalSupportTotalUsd').textContent = `$${(institutionalSupportTotalZMW / exchangeRate).toFixed(2)}`;
-
-    document.getElementById('contingencyTotal').textContent = `ZMW ${contingencyTotalZMW.toFixed(2)}`;
-    document.getElementById('contingencyTotalUsd').textContent = `$${(contingencyTotalZMW / exchangeRate).toFixed(2)}`;
-
-    document.getElementById('grandTotalZMW').textContent = `ZMW ${grandTotalZMW.toFixed(2)}`;
-    document.getElementById('grandTotalUSD').textContent = `$${grandTotalUSD.toFixed(2)}`;
-
-    // Update form totals
-    document.getElementById('total_budget_zmw').value = grandTotalZMW.toFixed(2);
-    document.getElementById('total_budget_usd').value = grandTotalUSD.toFixed(2);
+    updateActivityTotals(row.closest('.activity-block'));
 }
 
-// Check if no items exist
-function checkEmptyState() {
-    const items = document.querySelectorAll('#budgetItemsContainer .budget-item-card');
-    const emptyState = document.getElementById('emptyState');
+function updateActivityTotals(activity) {
+    const rows = activity.querySelectorAll('.budget-line-row');
+    let total = 0, y1 = 0, y2 = 0, y3 = 0;
 
-    if (items.length === 0) {
-        emptyState.classList.remove('d-none');
+    rows.forEach(r => {
+        total += parseFloat(r.querySelector('.total-display').value) || 0;
+        y1 += parseFloat(r.querySelector('.year-1').value) || 0;
+        y2 += parseFloat(r.querySelector('.year-2').value) || 0;
+        y3 += parseFloat(r.querySelector('.year-3').value) || 0;
+    });
+
+    const totalCell = activity.querySelector('.activity-total');
+    if (totalCell) totalCell.textContent = total.toFixed(2);
+    const y1Cell = activity.querySelector('.activity-total-y1');
+    if (y1Cell) y1Cell.textContent = y1.toFixed(2);
+    const y2Cell = activity.querySelector('.activity-total-y2');
+    if (y2Cell) y2Cell.textContent = y2.toFixed(2);
+    const y3Cell = activity.querySelector('.activity-total-y3');
+    if (y3Cell) y3Cell.textContent = y3.toFixed(2);
+
+    updateAllTotals();
+}
+
+function updateAllTotals() {
+    const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25;
+
+    let totalZMW = 0;
+    let totalUSD = 0;
+    let totalEUR = 0;
+    let totalGBP = 0;
+    let totalY1 = 0;
+    let totalY2 = 0;
+    let totalY3 = 0;
+
+    document.querySelectorAll('.budget-line-row').forEach(row => {
+        const totalInZMW = parseFloat(row.querySelector('.total-display').value) || 0;
+        const currency = row.querySelector('.currency-select').value;
+        const year1 = parseFloat(row.querySelector('.year-1').value) || 0;
+        const year2 = parseFloat(row.querySelector('.year-2').value) || 0;
+        const year3 = parseFloat(row.querySelector('.year-3').value) || 0;
+
+        totalZMW += totalInZMW;
+
+        let originalAmount = totalInZMW;
+        if (currency !== 'ZMW') {
+            originalAmount = totalInZMW / exchangeRate;
+        }
+
+        if (currency === 'USD') totalUSD += originalAmount;
+        if (currency === 'EUR') totalEUR += originalAmount;
+        if (currency === 'GBP') totalGBP += originalAmount;
+
+        totalY1 += year1;
+        totalY2 += year2;
+        totalY3 += year3;
+    });
+
+    document.getElementById('summary-zmw').innerHTML = 'ZMW ' + totalZMW.toFixed(2);
+    document.getElementById('summary-y1').innerHTML = totalY1.toFixed(2);
+    document.getElementById('summary-y2').innerHTML = totalY2.toFixed(2);
+    document.getElementById('summary-y3').innerHTML = totalY3.toFixed(2);
+    document.getElementById('total_budget_zmw_display').value = totalZMW.toFixed(2);
+    document.getElementById('total_budget_zmw_hidden').value = totalZMW.toFixed(2);
+
+    if (totalUSD > 0) {
+        document.getElementById('summary-usd-container').style.display = 'block';
+        document.getElementById('summary-usd').innerHTML = '$' + totalUSD.toFixed(2);
     } else {
-        emptyState.classList.add('d-none');
+        document.getElementById('summary-usd-container').style.display = 'none';
+    }
+
+    if (totalEUR > 0) {
+        document.getElementById('summary-eur-container').style.display = 'block';
+        document.getElementById('summary-eur').innerHTML = '€' + totalEUR.toFixed(2);
+    } else {
+        document.getElementById('summary-eur-container').style.display = 'none';
+    }
+
+    if (totalGBP > 0) {
+        document.getElementById('summary-gbp-container').style.display = 'block';
+        document.getElementById('summary-gbp').innerHTML = '£' + totalGBP.toFixed(2);
+    } else {
+        document.getElementById('summary-gbp-container').style.display = 'none';
     }
 }
 
-// Prepare data for submission
-function prepareBudgetItems() {
-    const items = [];
-    const itemElements = document.querySelectorAll('#budgetItemsContainer .budget-item-card');
-
-    itemElements.forEach((item, index) => {
-        const itemData = {
-            section: item.querySelector('.section-select').value,
-            objective: item.querySelector('.objective').value,
-            activity: item.querySelector('.activity').value,
-            component: item.querySelector('.component').value,
-            description_cost_category: item.querySelector('.description_cost_category').value,
-            description_cost_item: item.querySelector('.description_cost_item').value,
-            number: item.querySelector('.number').value,
-            frequency: item.querySelector('.frequency').value,
-            unit: item.querySelector('.unit').value,
-            unit_cost: item.querySelector('.unit_cost').value,
-            total_amount_zmw: item.querySelector('.total_amount_zmw').value,
-            total_amount_usd: item.querySelector('.total_amount_usd').value,
-            revised_year_1: item.querySelector('.revised_year_1').value,
-            revised_year_2: item.querySelector('.revised_year_2').value,
-            revised_year_3: item.querySelector('.revised_year_3').value,
-            comments: item.querySelector('.comments').value,
-            sort_order: index + 1
-        };
-        items.push(itemData);
-    });
-
-    return items;
-}
-
-// Save budget
-function saveBudget() {
-    const items = prepareBudgetItems();
-
-    // Clear previous hidden fields
-    document.getElementById('hiddenFieldsContainer').innerHTML = '';
-
-    // Add hidden fields for each item
-    items.forEach((item, index) => {
-        for (const [key, value] of Object.entries(item)) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = `budget_items[${index}][${key}]`;
-            input.value = value;
-            document.getElementById('hiddenFieldsContainer').appendChild(input);
-        }
-    });
-
-    // Submit form
-    document.getElementById('budgetForm').submit();
-}
-
-// Confirm delete
 function confirmDelete() {
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    deleteModal.show();
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
 }
 
-// Initialize existing items
-document.addEventListener('DOMContentLoaded', function() {
-    // Add event listeners to existing items
-    const existingItems = document.querySelectorAll('#budgetItemsContainer .budget-item-card');
-
-    existingItems.forEach(item => {
-        // Set section color
-        const section = item.querySelector('.section-select').value;
-        updateSectionColor(item, section);
-
-        // Add remove button listener
-        const removeBtn = item.querySelector('.remove-item');
-        removeBtn.addEventListener('click', function() {
-            item.remove();
-            updateTotals();
-            checkEmptyState();
-        });
-
-        // Add calculation listeners to existing items
-        const numberInput = item.querySelector('.number');
-        const frequencyInput = item.querySelector('.frequency');
-        const unitCostInput = item.querySelector('.unit_cost');
-        const sectionSelect = item.querySelector('.section-select');
-
-        const calculateTotal = () => {
-            const number = parseFloat(numberInput.value) || 0;
-            const frequency = parseFloat(frequencyInput.value) || 0;
-            const unitCost = parseFloat(unitCostInput.value) || 0;
-            const exchangeRate = parseFloat(document.getElementById('exchange_rate').value) || 25;
-
-            const totalZMW = number * frequency * unitCost;
-            const totalUSD = totalZMW / exchangeRate;
-
-            const totalZMWInput = item.querySelector('.total_amount_zmw');
-            const totalUSDInput = item.querySelector('.total_amount_usd');
-
-            totalZMWInput.value = totalZMW.toFixed(2);
-            totalUSDInput.value = totalUSD.toFixed(2);
-
-            updateTotals();
-        };
-
-        numberInput.addEventListener('input', calculateTotal);
-        frequencyInput.addEventListener('input', calculateTotal);
-        unitCostInput.addEventListener('input', calculateTotal);
-        sectionSelect.addEventListener('change', function() {
-            updateSectionColor(item, this.value);
-            updateTotals();
-        });
-    });
-
-    // Exchange rate change listener
-    document.getElementById('exchange_rate').addEventListener('input', function() {
-        // Recalculate all item totals
-        const items = document.querySelectorAll('#budgetItemsContainer .budget-item-card');
-        const exchangeRate = parseFloat(this.value) || 25;
-
-        items.forEach(item => {
-            const number = parseFloat(item.querySelector('.number').value) || 0;
-            const frequency = parseFloat(item.querySelector('.frequency').value) || 0;
-            const unitCost = parseFloat(item.querySelector('.unit_cost').value) || 0;
-            const totalZMW = number * frequency * unitCost;
-            const totalUSD = totalZMW / exchangeRate;
-
-            const totalZMWInput = item.querySelector('.total_amount_zmw');
-            const totalUSDInput = item.querySelector('.total_amount_usd');
-
-            totalZMWInput.value = totalZMW.toFixed(2);
-            totalUSDInput.value = totalUSD.toFixed(2);
-        });
-
-        updateTotals();
-    });
-
-    // Add sample data button for testing
-    const actionButtons = document.querySelector('.card-body.text-center');
-    if (actionButtons) {
-        const testBtn = document.createElement('button');
-        testBtn.type = 'button';
-        testBtn.className = 'btn btn-info btn-lg me-3';
-        testBtn.innerHTML = '<i class="bi bi-plus-circle me-2"></i> Add Sample Item';
-        testBtn.onclick = function() {
-            addSection('A - CORE PROGRAM EXPENDITURE');
-            const lastItem = document.querySelector('#budgetItemsContainer .budget-item-card:last-child');
-            if (lastItem) {
-                lastItem.querySelector('.objective').value = 'OBJECTIVE 1: To strengthen technical and institutional capacity of CTPD for effective delivery of its tobacco control mandate in Zambia.';
-                lastItem.querySelector('.activity').value = 'ACTIVITY 1.1: Conduct the Quarterly review monitoring and evaluation process';
-                lastItem.querySelector('.description_cost_category').value = 'Civil Society Institutional Support';
-                lastItem.querySelector('.description_cost_item').value = 'Venue and Conference';
-                lastItem.querySelector('.number').value = '1';
-                lastItem.querySelector('.frequency').value = '8';
-                lastItem.querySelector('.unit').value = 'Quarter';
-                lastItem.querySelector('.unit_cost').value = '12522';
-                lastItem.querySelector('.comments').value = 'Venue and conference at K450 per person for 22 persons, for 2 days, per quarter';
-
-                // Trigger calculation
-                const event = new Event('input');
-                lastItem.querySelector('.unit_cost').dispatchEvent(event);
-            }
-        };
-        actionButtons.prepend(testBtn);
+document.getElementById('budgetForm').addEventListener('submit', function() {
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Updating...';
     }
+    updateAllTotals();
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderExistingData();
+});
+
+const exchangeRateInput = document.getElementById('exchange_rate');
+if (exchangeRateInput) {
+    exchangeRateInput.addEventListener('input', function() {
+        document.querySelectorAll('.budget-line-row').forEach(row => {
+            calculateLineTotal(row.querySelector('.unit-cost-input'));
+        });
+    });
+}
 </script>
-@endpush
+@endsection
